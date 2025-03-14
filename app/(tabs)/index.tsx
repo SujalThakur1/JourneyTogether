@@ -1,74 +1,282 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  Animated,
+  useColorScheme,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+// import { DestinationsSection } from "../../components/DestinationsSection/index";
+// import { TopDestinationsSection } from "../../components/TopDestinationsSection/index";
+import { useApp } from "../../contexts/AppContext";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+// Custom hook to handle theme colors
+const useThemeColors = () => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-export default function HomeScreen() {
+  return {
+    textColor: isDark ? "white" : "gray.800",
+    iconColor: isDark ? "#FFF" : "#000",
+    searchBgColor: isDark ? "#27272a" : "#F5F5F5",
+    categoryBgColor: isDark ? "#27272a" : "#F5F5F5",
+    categoryTextColor: isDark ? "#A1A1AA" : "#666",
+    categoryActiveBgColor: isDark ? "#FFFFFF" : "#000000",
+    categoryActiveTextColor: isDark ? "#000000" : "#FFFFFF",
+    searchInputTextColor: isDark ? "#FFFFFF" : "#000000",
+    spinnerColor: isDark ? "#FFFFFF" : "#000000",
+    backgroundColor: isDark ? "#18181b" : "#FFFFFF",
+  };
+};
+
+export default function DiscoverScreen() {
+  const { categories, isLoading, selectedCategory, setSelectedCategory } =
+    useApp();
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const colors = useThemeColors();
+
+  // Animation setup for loading spinner
+  const [spinValue] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (isLoading) {
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [isLoading]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  const handleCloseSearch = () => {
+    setShowSearch(false);
+    setSearchText("");
+  };
+
+  const handleCategoryPress = (category: any) => {
+    setSelectedCategory(category);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.backgroundColor }]}
+    >
+      <View style={styles.header}>
+        {!showSearch ? (
+          <>
+            <Text style={[styles.heading, { color: colors.textColor }]}>
+              Discover
+            </Text>
+            <View style={styles.headerIcons}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setShowSearch(true)}
+              >
+                <Ionicons name="search" size={24} color={colors.iconColor} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconButton}>
+                <Ionicons
+                  name="notifications-outline"
+                  size={24}
+                  color={colors.iconColor}
+                />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <View style={styles.searchContainer}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleCloseSearch}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.iconColor}
+              />
+            </TouchableOpacity>
+            <TextInput
+              style={[
+                styles.searchInput,
+                {
+                  backgroundColor: colors.searchBgColor,
+                  color: colors.searchInputTextColor,
+                },
+              ]}
+              placeholder="Search destinations..."
+              placeholderTextColor={colors.categoryTextColor}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus={true}
+              selectionColor={colors.iconColor}
+            />
+            <TouchableOpacity style={styles.searchButton}>
+              <Ionicons
+                name="search"
+                size={20} 
+                color={colors.categoryTextColor}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoriesContainer}
+        >
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.category_id}
+              style={[
+                styles.categoryButton,
+                { backgroundColor: colors.categoryBgColor },
+                selectedCategory?.category_id === category.category_id && {
+                  backgroundColor: colors.categoryActiveBgColor,
+                },
+              ]}
+              onPress={() => handleCategoryPress(category)}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  { color: colors.categoryTextColor },
+                  selectedCategory?.category_id === category.category_id && {
+                    color: colors.categoryActiveTextColor,
+                  },
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <Animated.View
+              style={[
+                styles.spinner,
+                {
+                  transform: [{ rotate: spin }],
+                  borderTopColor: colors.spinnerColor,
+                  borderRightColor: colors.spinnerColor,
+                  borderBottomColor: colors.spinnerColor,
+                },
+              ]}
+            />
+            <Text style={[styles.loadingText, { color: colors.textColor }]}>
+              Loading Destinations...
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* <DestinationsSection />
+            <TopDestinationsSection /> */}
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  scrollContent: {
+    paddingBottom: 60,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 5,
+    marginHorizontal: 16,
+    paddingVertical: 12,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: "bold",
+  },
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconButton: {
+    marginLeft: 16,
+  },
+  searchContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backButton: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingRight: 40,
+    fontSize: 16,
+  },
+  searchButton: {
+    position: "absolute",
+    right: 12,
+    padding: 8,
+  },
+  categoriesContainer: {
+    paddingHorizontal: 5,
+    marginVertical: 12,
+    marginHorizontal: 16,
+  },
+  categoryButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    borderRadius: 20,
+  },
+  categoryText: {
+    fontSize: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    height: 200,
+  },
+  spinner: {
+    width: 40,
+    height: 40,
+    borderWidth: 4,
+    borderRadius: 20,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+    marginBottom: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
 });

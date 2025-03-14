@@ -1,43 +1,111 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+import { Tabs } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Platform, useColorScheme } from "react-native";
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+// Custom hook to replace useColorModeValue
+const useThemeColors = () => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+
+  const bgColor = isDark ? "#000000" : "white";
+  const activeTintColor = isDark ? "#FFFFFF" : "#000000";
+  const inactiveTintColor = isDark ? "#666666" : "#757575";
+  const shadowOpacity = isDark ? 0.2 : 0.1;
+
+  return { bgColor, activeTintColor, inactiveTintColor, shadowOpacity };
+};
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { bgColor, activeTintColor, inactiveTintColor, shadowOpacity } =
+    useThemeColors();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
+        tabBarStyle: {
+          backgroundColor: bgColor,
+          borderTopWidth: 0,
+          position: "absolute",
+          height: 85,
+          shadowColor: "#000000",
+          shadowOffset: {
+            width: 0,
+            height: -4,
           },
-          default: {},
-        }),
-      }}>
+          shadowOpacity,
+          shadowRadius: 8,
+          elevation: 10,
+          paddingBottom: Platform.OS === "ios" ? 20 : 10,
+          paddingTop: 10,
+        },
+        tabBarActiveTintColor: activeTintColor,
+        tabBarInactiveTintColor: inactiveTintColor,
+        tabBarShowLabel: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <MaterialCommunityIcons
+              name={focused ? "compass" : "compass-outline"}
+              size={35}
+              color={color}
+              style={{
+                marginTop: -4.5,
+                marginLeft: -4,
+              }}
+            />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="groups"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ focused, color }) => (
+            <MaterialCommunityIcons
+              name={focused ? "account-group" : "account-group-outline"}
+              size={35}
+              color={color}
+              style={{
+                marginTop: -4.5,
+                marginLeft: -4,
+              }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          tabBarIcon: ({ focused, color }) => (
+            <MaterialCommunityIcons
+              name={focused ? "history" : "history"}
+              size={35}
+              color={color}
+              style={{
+                marginTop: -4.5,
+                marginLeft: -4,
+              }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          tabBarIcon: ({ focused, color }) => (
+            <MaterialCommunityIcons
+              name={focused ? "cog" : "cog-outline"}
+              size={35}
+              color={color}
+              style={{
+                marginTop: -4.5,
+                marginLeft: -4,
+              }}
+            />
+          ),
         }}
       />
     </Tabs>
