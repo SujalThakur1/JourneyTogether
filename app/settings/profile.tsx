@@ -1,32 +1,24 @@
 import React, { useState } from "react";
-import { Platform } from "react-native";
 import {
-  Box,
-  VStack,
-  HStack,
-  Button,
+  View,
   Text,
-  useColorModeValue,
-  Heading,
-  FormControl,
-  Icon,
-  Center,
-  Pressable,
-  StatusBar,
-  useToast,
-} from "native-base";
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  useColorScheme,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../contexts/AppContext";
 import { supabase } from "../../lib/supabase";
-import { Ionicons } from "@expo/vector-icons";
-import Avatar from "../../components/Avatar";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { TextInput as PaperTextInput } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
+import Toast from "react-native-toast-message";
+import Avatar from "../../components/Avatar";
 
 export default function ProfileSettings() {
   const router = useRouter();
-  const toast = useToast();
   const { userDetails, setUserUpdated } = useApp();
   const [loading, setLoading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -39,17 +31,22 @@ export default function ProfileSettings() {
     avatar_url: userDetails?.avatar_url || "",
   });
 
-  // Theme colors
-  const bgColor = useColorModeValue("white", "gray.900");
-  const cardBgColor = useColorModeValue("gray.50", "gray.800");
-  const borderColor = useColorModeValue("gray.200", "gray.700");
-  const textColor = useColorModeValue("black", "white");
-  const subTextColor = useColorModeValue("gray.600", "gray.400");
-  const accentColor = useColorModeValue("#ED851B", "#ED851B");
-  const inputBgColor = useColorModeValue("white", "gray.800");
-  const isDark = useColorModeValue(false, true);
-  const primaryColor = useColorModeValue("#000000", "#FFFFFF");
-  const labelColor = useColorModeValue("#000000", "#FFFFFF");
+  // Theme colors using useColorScheme
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
+  const themeColors = {
+    bgColor: isDark ? "#1F2937" : "white",
+    cardBgColor: isDark ? "#374151" : "#F9FAFB",
+    borderColor: isDark ? "#4B5563" : "#E5E7EB",
+    textColor: isDark ? "#F9FAFB" : "black",
+    subTextColor: isDark ? "#9CA3AF" : "#6B7280",
+    accentColor: "#ED851B", // Consistent across modes
+    inputBgColor: isDark ? "#374151" : "white",
+    primaryColor: isDark ? "#FFFFFF" : "#000000",
+    labelColor: isDark ? "#FFFFFF" : "#000000",
+    pressedAccentColor: isDark ? "#F09A3A" : "#D67A18",
+    genderOptionBg: isDark ? "#333333" : "#F0EDE8",
+  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -90,21 +87,23 @@ export default function ProfileSettings() {
 
       setUserUpdated(true);
 
-      toast.show({
-        description: "Profile updated successfully",
-        placement: "top",
-        duration: 3000,
-        backgroundColor: accentColor,
+      Toast.show({
+        type: "success",
+        text1: "Profile Updated",
+        text2: "Profile updated successfully",
+        position: "top",
+        visibilityTime: 3000,
       });
 
       router.replace("/(tabs)");
     } catch (error) {
       console.error("Error updating profile:", error);
-      toast.show({
-        description: "Failed to update profile",
-        placement: "top",
-        duration: 3000,
-        backgroundColor: "red.500",
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: "Failed to update profile",
+        position: "top",
+        visibilityTime: 3000,
       });
     } finally {
       setLoading(false);
@@ -112,325 +111,335 @@ export default function ProfileSettings() {
   };
 
   return (
-    <Box flex={1} bg={bgColor} safeArea>
-      <StatusBar
-        barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={isDark ? "#1A1A1A" : "#F7F5F2"}
-      />
-
-      <Box
-        pl={5}
-        pr={5}
-        pt={2}
-        pb={2}
-        flexDirection="row"
-        alignItems="center"
-        borderBottomWidth={1}
-        borderBottomColor={borderColor}
+    <View style={[styles.container, { backgroundColor: themeColors.bgColor }]}>
+      <View
+        style={[styles.header, { borderBottomColor: themeColors.borderColor }]}
       >
-        <Pressable onPress={() => router.back()} mr={3}>
-          <Icon as={Ionicons} name="arrow-back" size="md" color={textColor} />
-        </Pressable>
-        <Heading size="lg" color={textColor}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={themeColors.textColor} />
+        </TouchableOpacity>
+        <Text style={[styles.heading, { color: themeColors.textColor }]}>
           Profile Settings
-        </Heading>
-      </Box>
+        </Text>
+      </View>
 
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={styles.scrollContent}
       >
-        <Box p={5} flex={1}>
-          <VStack space={6}>
-            {/* Avatar Section */}
-            <Center>
-              <Avatar
-                url={formData.avatar_url}
-                size={120}
-                onUpload={handleAvatarUpload}
+        <View style={styles.content}>
+          {/* Avatar Section */}
+          <View style={styles.avatarContainer}>
+            <Avatar
+              url={formData.avatar_url}
+              size={120}
+              onUpload={handleAvatarUpload}
+            />
+          </View>
+
+          {/* Profile Form */}
+          <View
+            style={[
+              styles.formCard,
+              {
+                backgroundColor: themeColors.cardBgColor,
+                borderColor: themeColors.borderColor,
+              },
+            ]}
+          >
+            {/* Username */}
+            <View style={styles.formControl}>
+              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+                Username
+              </Text>
+              <PaperTextInput
+                value={formData.username}
+                onChangeText={(value) =>
+                  setFormData((prev) => ({ ...prev, username: value }))
+                }
+                mode="outlined"
+                style={styles.input}
+                textColor={themeColors.textColor}
+                theme={{
+                  colors: {
+                    primary: themeColors.primaryColor,
+                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                  },
+                }}
               />
-            </Center>
+            </View>
 
-            {/* Profile Form */}
-            <Box
-              bg={cardBgColor}
-              rounded="xl"
-              borderWidth={1}
-              borderColor={borderColor}
-              shadow={1}
-              p={5}
-            >
-              <VStack space={4}>
-                {/* Username */}
-                <FormControl>
-                  <FormControl.Label _text={{ color: labelColor }}>
-                    Username
-                  </FormControl.Label>
-                  <PaperTextInput
-                    value={formData.username}
-                    onChangeText={(value) =>
-                      setFormData((prev) => ({ ...prev, username: value }))
-                    }
-                    mode="outlined"
-                    style={{ backgroundColor: "transparent" }}
-                    textColor={textColor}
-                    theme={{
-                      colors: {
-                        primary: isDark ? "white" : "black",
-                        placeholder: isDark ? "gray.400" : "gray.500",
-                      },
-                    }}
-                  />
-                </FormControl>
+            {/* Email - Read Only */}
+            <View style={styles.formControl}>
+              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+                Email
+              </Text>
+              <PaperTextInput
+                value={formData.email}
+                mode="outlined"
+                style={styles.input}
+                textColor={themeColors.textColor}
+                disabled
+                theme={{
+                  colors: {
+                    primary: themeColors.primaryColor,
+                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                  },
+                }}
+              />
+              <Text
+                style={[styles.helperText, { color: themeColors.subTextColor }]}
+              >
+                Email cannot be changed
+              </Text>
+            </View>
 
-                {/* Email - Read Only */}
-                <FormControl>
-                  <FormControl.Label _text={{ color: labelColor }}>
-                    Email
-                  </FormControl.Label>
-                  <PaperTextInput
-                    value={formData.email}
-                    mode="outlined"
-                    style={{ backgroundColor: "transparent" }}
-                    textColor={textColor}
-                    disabled
-                    theme={{
-                      colors: {
-                        primary: isDark ? "white" : "black",
-                        placeholder: isDark ? "gray.400" : "gray.500",
-                      },
-                    }}
-                  />
-                  <FormControl.HelperText>
-                    Email cannot be changed
-                  </FormControl.HelperText>
-                </FormControl>
-
-                {/* Date of Birth */}
-                <FormControl>
-                  <FormControl.Label _text={{ color: labelColor }}>
-                    Date of Birth
-                  </FormControl.Label>
-                  <Pressable onPress={() => setShowDatePicker(true)}>
-                    <PaperTextInput
-                      value={formData.date_of_birth}
-                      mode="outlined"
-                      style={{ backgroundColor: "transparent" }}
-                      textColor={textColor}
-                      editable={false}
-                      right={
-                        <PaperTextInput.Icon
-                          icon="calendar"
-                          color={isDark ? "white" : "black"}
-                          onPress={() => setShowDatePicker(true)}
-                        />
-                      }
-                      theme={{
-                        colors: {
-                          primary: isDark ? "white" : "black",
-                          placeholder: isDark ? "gray.400" : "gray.500",
-                        },
-                      }}
+            {/* Date of Birth */}
+            <View style={styles.formControl}>
+              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+                Date of Birth
+              </Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+                <PaperTextInput
+                  value={formData.date_of_birth}
+                  mode="outlined"
+                  style={styles.input}
+                  textColor={themeColors.textColor}
+                  editable={false}
+                  right={
+                    <PaperTextInput.Icon
+                      icon="calendar"
+                      color={themeColors.primaryColor}
+                      onPress={() => setShowDatePicker(true)}
                     />
-                  </Pressable>
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={
-                        formData.date_of_birth
-                          ? new Date(formData.date_of_birth)
-                          : new Date()
-                      }
-                      mode="date"
-                      display={Platform.OS === "ios" ? "spinner" : "default"}
-                      onChange={handleDateChange}
-                    />
-                  )}
-                </FormControl>
+                  }
+                  theme={{
+                    colors: {
+                      primary: themeColors.primaryColor,
+                      placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                    },
+                  }}
+                />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={
+                    formData.date_of_birth
+                      ? new Date(formData.date_of_birth)
+                      : new Date()
+                  }
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={handleDateChange}
+                />
+              )}
+            </View>
 
-                {/* Gender */}
-                <FormControl>
-                  <FormControl.Label _text={{ color: labelColor }}>
-                    Gender
-                  </FormControl.Label>
-                  <HStack space={4} mt={1}>
-                    <Pressable
-                      flex={1}
-                      onPress={() =>
-                        setFormData((prev) => ({ ...prev, gender: "male" }))
-                      }
-                    >
-                      <Box
-                        bg={
-                          formData.gender === "male"
-                            ? accentColor
-                            : useColorModeValue("#F0EDE8", "#333333")
-                        }
-                        p={3}
-                        rounded="lg"
-                        alignItems="center"
-                        opacity={formData.gender === "male" ? 1 : 0.7}
-                      >
-                        <Icon
-                          as={Ionicons}
-                          name="male-outline"
-                          size="md"
-                          color={
-                            formData.gender === "male" ? "white" : textColor
-                          }
-                        />
-                        <Text
-                          color={
-                            formData.gender === "male" ? "white" : textColor
-                          }
-                          mt={1}
-                          fontSize="xs"
-                          fontWeight={
-                            formData.gender === "male" ? "bold" : "normal"
-                          }
-                        >
-                          Male
-                        </Text>
-                      </Box>
-                    </Pressable>
-                    <Pressable
-                      flex={1}
-                      onPress={() =>
-                        setFormData((prev) => ({ ...prev, gender: "female" }))
-                      }
-                    >
-                      <Box
-                        bg={
-                          formData.gender === "female"
-                            ? accentColor
-                            : useColorModeValue("#F0EDE8", "#333333")
-                        }
-                        p={3}
-                        rounded="lg"
-                        alignItems="center"
-                        opacity={formData.gender === "female" ? 1 : 0.7}
-                      >
-                        <Icon
-                          as={Ionicons}
-                          name="female-outline"
-                          size="md"
-                          color={
-                            formData.gender === "female" ? "white" : textColor
-                          }
-                        />
-                        <Text
-                          color={
-                            formData.gender === "female" ? "white" : textColor
-                          }
-                          mt={1}
-                          fontSize="xs"
-                          fontWeight={
-                            formData.gender === "female" ? "bold" : "normal"
-                          }
-                        >
-                          Female
-                        </Text>
-                      </Box>
-                    </Pressable>
-                    <Pressable
-                      flex={1}
-                      onPress={() =>
-                        setFormData((prev) => ({ ...prev, gender: "other" }))
-                      }
-                    >
-                      <Box
-                        bg={
-                          formData.gender === "other"
-                            ? accentColor
-                            : useColorModeValue("#F0EDE8", "#333333")
-                        }
-                        p={3}
-                        rounded="lg"
-                        alignItems="center"
-                        opacity={formData.gender === "other" ? 1 : 0.7}
-                      >
-                        <Icon
-                          as={Ionicons}
-                          name="person-outline"
-                          size="md"
-                          color={
-                            formData.gender === "other" ? "white" : textColor
-                          }
-                        />
-                        <Text
-                          color={
-                            formData.gender === "other" ? "white" : textColor
-                          }
-                          mt={1}
-                          fontSize="xs"
-                          fontWeight={
-                            formData.gender === "other" ? "bold" : "normal"
-                          }
-                        >
-                          Other
-                        </Text>
-                      </Box>
-                    </Pressable>
-                  </HStack>
-                </FormControl>
-
-                {/* Bio */}
-                <FormControl>
-                  <FormControl.Label _text={{ color: labelColor }}>
-                    Bio
-                  </FormControl.Label>
-                  <PaperTextInput
-                    value={formData.bio}
-                    onChangeText={(value) =>
-                      setFormData((prev) => ({ ...prev, bio: value }))
-                    }
-                    mode="outlined"
-                    style={{
-                      backgroundColor: "transparent",
-                      height: 120,
-                      textAlignVertical: "top",
-                    }}
-                    textColor={textColor}
-                    theme={{
-                      colors: {
-                        primary: isDark ? "white" : "black",
-                        placeholder: isDark ? "gray.400" : "gray.500",
-                      },
-                    }}
-                    multiline
-                    numberOfLines={6}
-                    maxLength={250}
-                    placeholder="Tell us about yourself..."
-                  />
-                  <Text
-                    style={{
-                      textAlign: "right",
-                      marginTop: 4,
-                      fontSize: 12,
-                      opacity: 0.7,
-                      color: labelColor,
-                    }}
+            {/* Gender */}
+            <View style={styles.formControl}>
+              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+                Gender
+              </Text>
+              <View style={styles.genderOptions}>
+                {["male", "female", "other"].map((gender) => (
+                  <TouchableOpacity
+                    key={gender}
+                    onPress={() => setFormData((prev) => ({ ...prev, gender }))}
+                    style={styles.genderButton}
                   >
-                    {formData.bio.length}/250 characters
-                  </Text>
-                </FormControl>
-              </VStack>
-            </Box>
+                    <View
+                      style={[
+                        styles.genderOption,
+                        {
+                          backgroundColor:
+                            formData.gender === gender
+                              ? themeColors.accentColor
+                              : themeColors.genderOptionBg,
+                          opacity: formData.gender === gender ? 1 : 0.7,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={
+                          gender === "male"
+                            ? "male-outline"
+                            : gender === "female"
+                            ? "female-outline"
+                            : "person-outline"
+                        }
+                        size={24}
+                        color={
+                          formData.gender === gender
+                            ? "white"
+                            : themeColors.textColor
+                        }
+                      />
+                      <Text
+                        style={{
+                          color:
+                            formData.gender === gender
+                              ? "white"
+                              : themeColors.textColor,
+                          marginTop: 4,
+                          fontSize: 12,
+                          fontWeight:
+                            formData.gender === gender ? "bold" : "normal",
+                        }}
+                      >
+                        {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
-            <Button
-              onPress={handleUpdate}
-              isLoading={loading}
-              isLoadingText="Saving..."
-              bg={accentColor}
-              _pressed={{ bg: useColorModeValue("#D67A18", "#F09A3A") }}
-              rounded="lg"
-              py={3}
-              mb={5}
-            >
-              Save Changes
-            </Button>
-          </VStack>
-        </Box>
+            {/* Bio */}
+            <View style={styles.formControl}>
+              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+                Bio
+              </Text>
+              <PaperTextInput
+                value={formData.bio}
+                onChangeText={(value) =>
+                  setFormData((prev) => ({ ...prev, bio: value }))
+                }
+                mode="outlined"
+                style={[styles.input, styles.bioInput]}
+                textColor={themeColors.textColor}
+                theme={{
+                  colors: {
+                    primary: themeColors.primaryColor,
+                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                  },
+                }}
+                multiline
+                numberOfLines={6}
+                maxLength={250}
+                placeholder="Tell us about yourself..."
+              />
+              <Text
+                style={[styles.charCount, { color: themeColors.labelColor }]}
+              >
+                {formData.bio.length}/250 characters
+              </Text>
+            </View>
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            onPress={handleUpdate}
+            disabled={loading}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: loading
+                  ? themeColors.pressedAccentColor
+                  : themeColors.accentColor,
+              },
+            ]}
+          >
+            <Text style={styles.saveButtonText}>
+              {loading ? "Saving..." : "Save Changes"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </KeyboardAwareScrollView>
-    </Box>
+      <Toast />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  content: {
+    flex: 1,
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  formCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  formControl: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: "transparent",
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  genderOptions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  genderButton: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  genderOption: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  bioInput: {
+    height: 120,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    textAlign: "right",
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+  saveButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 20,
+    marginTop: 16,
+  },
+  saveButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+});
