@@ -102,6 +102,8 @@ interface GroupsContextType {
   createGroup: (params: CreateGroupParams) => Promise<Group>;
   joinGroup: (code: string) => Promise<Group>;
   fetchDestinationDetails: (destinationId: number) => Promise<any>;
+
+  resetGroupForms: () => void;
 }
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
@@ -243,6 +245,24 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     await fetchUserGroups();
   };
 
+  const resetGroupForms = () => {
+    // Reset group creation fields
+    setGroupType("destination");
+    setGroupName("");
+    setDestination("");
+    setDestinationId(null);
+    setDestinationCoordinates(null);
+    setSearchLeader("");
+    setSearchFriend("");
+    setSelectedLeader(null);
+    setGroupMembers([]);
+    setShowLeaderSuggestions(false);
+    setShowFriendSuggestions(false);
+
+    // Reset group joining fields
+    setGroupCode("");
+  };
+
   const handleJoinGroup = async () => {
     try {
       if (!userDetails?.id) {
@@ -275,6 +295,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       if (groupData.group_members.includes(userDetails.id)) {
+        // Reset form fields before navigation
+        resetGroupForms();
+
         router.push({
           pathname: "/group/[code]",
           params: { code: groupCode.toUpperCase() },
@@ -293,6 +316,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(updateError.message || "Failed to join group");
       }
 
+      // Reset form fields after successful join
+      resetGroupForms();
+
       await fetchUserGroups();
 
       router.push({
@@ -302,7 +328,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return groupData;
     } catch (error: any) {
-      console.error("Error joining group:", error);
+      console.log("Error joining group:", error);
       throw error;
     }
   };
@@ -365,7 +391,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       console.log("Group created successfully:", data);
-      setGroupCode(newGroupCode);
+
+      // Reset form fields after successful creation
+      resetGroupForms();
 
       await fetchUserGroups();
 
@@ -590,6 +618,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     createGroup,
     joinGroup,
     fetchDestinationDetails,
+    resetGroupForms,
   };
 
   return (

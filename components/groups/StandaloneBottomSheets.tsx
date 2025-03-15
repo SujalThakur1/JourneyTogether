@@ -9,6 +9,7 @@ import { useColors } from "../../contexts/ColorContext";
 import CreateGroupSection from "./CreateGroupSection";
 import JoinGroupSection from "./JoinGroupSection";
 import MapView, { Marker } from "react-native-maps";
+import { useGroups } from "../../contexts/GroupsContext";
 
 interface StandaloneBottomSheetsProps {
   showCreateSheet: boolean;
@@ -24,6 +25,19 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
   onCloseJoinSheet,
 }) => {
   const colors = useColors();
+  const { resetGroupForms } = useGroups();
+
+  // Handle closing create sheet with form reset
+  const handleCloseCreateSheet = () => {
+    resetGroupForms();
+    onCloseCreateSheet();
+  };
+
+  // Handle closing join sheet with form reset
+  const handleCloseJoinSheet = () => {
+    resetGroupForms();
+    onCloseJoinSheet();
+  };
 
   return (
     <>
@@ -32,9 +46,9 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
         visible={showCreateSheet}
         transparent
         animationType="slide"
-        onRequestClose={onCloseCreateSheet}
+        onRequestClose={handleCloseCreateSheet}
       >
-        <TouchableWithoutFeedback onPress={onCloseCreateSheet}>
+        <TouchableWithoutFeedback onPress={handleCloseCreateSheet}>
           <View
             style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
           >
@@ -69,9 +83,9 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
         visible={showJoinSheet}
         transparent
         animationType="slide"
-        onRequestClose={onCloseJoinSheet}
+        onRequestClose={handleCloseJoinSheet}
       >
-        <TouchableWithoutFeedback onPress={onCloseJoinSheet}>
+        <TouchableWithoutFeedback onPress={handleCloseJoinSheet}>
           <View
             style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
           >
@@ -80,7 +94,7 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
                 style={[
                   styles.bottomSheet,
                   {
-                    backgroundColor: colors.bottomSheetBgColor,
+                    backgroundColor: colors.bgColor,
                     borderTopLeftRadius: 15,
                     borderTopRightRadius: 15,
                     height: "50%",

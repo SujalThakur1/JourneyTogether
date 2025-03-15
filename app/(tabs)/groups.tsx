@@ -18,6 +18,7 @@ import EmptyGroupState from "../../components/groups/EmptyGroupState";
 import GroupSearchBar from "../../components/groups/GroupSearchBar";
 import FilterModal from "../../components/groups/FilterModal";
 import StandaloneBottomSheets from "../../components/groups/StandaloneBottomSheets";
+import { useFocusEffect } from "@react-navigation/native";
 
 const GroupsScreen = () => {
   const {
@@ -31,6 +32,7 @@ const GroupsScreen = () => {
     groupsError,
     fetchUserGroups,
     refreshGroups,
+    resetGroupForms,
   } = useGroups();
 
   const { userDetails } = useApp();
@@ -45,10 +47,21 @@ const GroupsScreen = () => {
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [showJoinSheet, setShowJoinSheet] = useState(false);
 
-  // Fetch groups on mount
+  // Fetch groups on mount and reset forms
   useEffect(() => {
     fetchUserGroups();
+    resetGroupForms();
   }, []);
+
+  // Reset forms when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      resetGroupForms();
+      return () => {
+        // This runs when screen loses focus
+      };
+    }, [])
+  );
 
   // Filter and search groups
   const filteredGroups = userGroups.filter((group) => {

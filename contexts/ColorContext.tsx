@@ -79,6 +79,9 @@ interface ThemeColors {
 
   // Radio button colors
   radioButtonColor: string;
+
+  // User search input colors
+  userSearchInputBgColor: string;
 }
 
 interface ColorContextType {
@@ -156,7 +159,6 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
 
     // Empty state colors
     emptyStateIconColor: isDark ? "#6B7280" : "#D1D5DB",
-
     // Bottom sheet colors
     bottomSheetBgColor: isDark ? "#1F2937" : "#FFFFFF",
     bottomSheetHandleColor: isDark ? "#4B5563" : "#E5E7EB",
@@ -167,8 +169,11 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
     // Helper property
     isDark,
 
-    //
+    // Radio button colors
     radioButtonColor: isDark ? "#92400e" : "#fdba74",
+
+    // User search input colors
+    userSearchInputBgColor: isDark ? "#27272a" : "white",
   };
 
   return (

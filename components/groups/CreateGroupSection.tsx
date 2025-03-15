@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import GroupMembersList from "./GroupMembersList";
 import DestinationManager from "./DestinationManager";
 import MapView, { Marker } from "react-native-maps";
 import { checkAndRequestLocationPermission } from "../../lib/locationService";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 // Define error type
 interface FormErrors {
@@ -55,13 +56,34 @@ const CreateGroupSection = () => {
     removeMember,
     destinationCoordinates,
     setDestinationId,
+    resetGroupForms,
   } = useGroups();
 
   // Get colors from context
   const colors = useColors();
+  const navigation = useNavigation();
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // Reset form when component unmounts or loses focus
+  useEffect(() => {
+    return () => {
+      // Reset form when component unmounts
+      resetGroupForms();
+    };
+  }, []);
+
+  // Reset form when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Reset form when screen comes into focus
+      resetGroupForms();
+      return () => {
+        // This runs when screen loses focus
+      };
+    }, [])
+  );
 
   const validateForm = (): FormErrors => {
     const newErrors: FormErrors = {};
@@ -148,7 +170,7 @@ const CreateGroupSection = () => {
           style={[
             styles.input,
             {
-              backgroundColor: colors.cardBgColor,
+              backgroundColor: colors.userSearchInputBgColor,
               borderColor:
                 focusedInput === "groupName"
                   ? colors.focusedBorderColor

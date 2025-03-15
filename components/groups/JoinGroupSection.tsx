@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,11 @@ import {
   StyleSheet,
   ToastAndroid,
   Platform,
-  Alert,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useGroups } from "../../contexts/GroupsContext";
-
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useColors } from "../../contexts/ColorContext";
 const JoinGroupSection = () => {
   const {
     groupCode,
@@ -27,17 +27,36 @@ const JoinGroupSection = () => {
     buttonPressedBgColor,
     textColor,
     handleJoinGroup,
+    resetGroupForms,
   } = useGroups();
+  const colors = useColors();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(""); // Added error state for better feedback
+  const navigation = useNavigation();
+
+  // Reset form when component unmounts or loses focus
+  useEffect(() => {
+    return () => {
+      // Reset form when component unmounts
+      resetGroupForms();
+    };
+  }, []);
+
+  // Reset form when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      // Reset form when screen comes into focus
+      resetGroupForms();
+      return () => {
+        // This runs when screen loses focus
+      };
+    }, [])
+  );
 
   const showToast = (title: string, description: string) => {
     if (Platform.OS === "android") {
       ToastAndroid.show(`${title}: ${description}`, ToastAndroid.SHORT);
-    } else {
-      // For iOS and other platforms
-      Alert.alert(title, description);
     }
   };
 
@@ -86,7 +105,7 @@ const JoinGroupSection = () => {
     <View
       style={[
         styles.container,
-        { backgroundColor: isDark ? "#1a1a1a" : "#fff" },
+        { backgroundColor: colors.bgColor },
       ]}
     >
       <View style={styles.headerContainer}>

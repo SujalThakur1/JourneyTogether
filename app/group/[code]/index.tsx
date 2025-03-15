@@ -71,7 +71,7 @@ const GroupMapScreen = () => {
   const mapRef = useRef<MapView>(null);
   const { effectiveColorMode } = useColorModeContext();
   const isDark = effectiveColorMode === "dark";
-  const { fetchDestinationDetails } = useGroups();
+  const { fetchDestinationDetails, resetGroupForms } = useGroups();
 
   // State
   const [group, setGroup] = useState<Group | null>(null);
@@ -307,6 +307,17 @@ const GroupMapScreen = () => {
     }
   }, [group, userDetails]);
 
+  // Reset group forms when component mounts and unmounts
+  useEffect(() => {
+    // Reset forms when component mounts
+    resetGroupForms();
+
+    return () => {
+      // Reset forms when component unmounts
+      resetGroupForms();
+    };
+  }, []);
+
   // Helper functions
   const shareGroupCode = async () => {
     if (!group) return;
@@ -357,6 +368,9 @@ const GroupMapScreen = () => {
 
           if (membersData) setMembers(membersData);
           startTrackingLocation();
+
+          // Reset group forms after successfully joining
+          resetGroupForms();
         },
         // Cancel callback
         () => {
@@ -369,7 +383,7 @@ const GroupMapScreen = () => {
         return;
       }
     } catch (error) {
-      console.error("Error joining group:", error);
+      console.error("Error joining group :", error);
     }
   };
 
