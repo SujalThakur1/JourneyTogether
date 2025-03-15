@@ -1,16 +1,12 @@
 import React, { useState } from "react";
-import { StyleSheet } from "react-native";
-import { supabase } from "../../lib/supabase";
 import {
-  Box,
+  View,
   Text,
-  VStack,
-  Button,
-  Center,
-  Heading,
-  useColorMode,
-  useColorModeValue,
-} from "native-base";
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { supabase } from "../../lib/supabase";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -32,11 +28,10 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setUserUpdated } = useApp();
-  const { colorMode } = useColorMode();
-  const isDark = colorMode === "dark";
-  const bgColor = useColorModeValue("gray.100", "gray.900");
-  const textColor = useColorModeValue("gray.800", "gray.100");
-  const inputBgColor = useColorModeValue("gray.50", "gray.800");
+  const isDark = false; // Replace with your own dark mode detection logic
+  const bgColor = isDark ? "#1F2937" : "#F3F4F6"; // gray.900 : gray.100
+  const textColor = isDark ? "#F3F4F6" : "#1F2937"; // gray.100 : gray.800
+  const inputBgColor = isDark ? "#1F2937" : "#F9FAFB"; // gray.800 : gray.50
 
   const handleSignIn = async (values: any, { setErrors }: any) => {
     setLoading(true);
@@ -73,18 +68,18 @@ export default function SignIn() {
       enableOnAndroid={true}
       keyboardShouldPersistTaps="handled"
     >
-      <Box flex={1} bg={bgColor} safeArea>
-        <Box flex={1} px={6} py={10}>
-          <Center flex={1}>
-            <VStack space={8} width="100%" maxW="400px">
-              <Center>
-                <Heading size="2xl" color={textColor} fontWeight="bold">
+      <View style={[styles.mainContainer, { backgroundColor: bgColor }]}>
+        <View style={styles.contentContainer}>
+          <View style={styles.centerContainer}>
+            <View style={styles.formContainer}>
+              <View style={styles.headerContainer}>
+                <Text style={[styles.heading, { color: textColor }]}>
                   Welcome Back
-                </Heading>
-                <Text color={textColor} mt={2} fontSize="md">
+                </Text>
+                <Text style={[styles.subheading, { color: textColor }]}>
                   Sign in to continue your journey
                 </Text>
-              </Center>
+              </View>
 
               <Formik
                 initialValues={{ email: "", password: "" }}
@@ -92,8 +87,13 @@ export default function SignIn() {
                 onSubmit={handleSignIn}
               >
                 {({ handleChange, handleSubmit, values, errors, touched }) => (
-                  <Box bg={inputBgColor} rounded="xl" p={6} shadow={2}>
-                    <VStack space={4}>
+                  <View
+                    style={[
+                      styles.inputContainer,
+                      { backgroundColor: inputBgColor },
+                    ]}
+                  >
+                    <View style={styles.inputWrapper}>
                       <EmailInput
                         value={values.email}
                         onChangeText={handleChange("email")}
@@ -108,43 +108,53 @@ export default function SignIn() {
                         touched={touched.password}
                       />
 
-                      <Button
+                      <Pressable
                         onPress={() => handleSubmit()}
-                        isLoading={loading}
-                        bg={isDark ? "white" : "black"}
-                        _text={{
-                          color: isDark ? "black" : "white",
-                        }}
+                        disabled={loading}
+                        style={[
+                          styles.button,
+                          { backgroundColor: isDark ? "white" : "black" },
+                        ]}
                       >
-                        Sign in
-                      </Button>
-                    </VStack>
-                  </Box>
+                        {loading ? (
+                          <ActivityIndicator
+                            color={isDark ? "black" : "white"}
+                            size="small"
+                          />
+                        ) : (
+                          <Text
+                            style={[
+                              styles.buttonText,
+                              { color: isDark ? "black" : "white" },
+                            ]}
+                          >
+                            Sign in
+                          </Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </View>
                 )}
               </Formik>
 
-              <Center>
-                <Text color={textColor} fontSize="md">
+              <View style={styles.footerContainer}>
+                <Text style={[styles.footerText, { color: textColor }]}>
                   Don't have an account?
                 </Text>
-                <Button
-                  variant="ghost"
+                <Pressable
                   onPress={() => router.push("/(auth)/SignUp")}
-                  isDisabled={loading}
-                  mt={2}
-                  _text={{
-                    color: textColor,
-                    fontSize: "md",
-                    fontWeight: "bold",
-                  }}
+                  disabled={loading}
+                  style={styles.linkButton}
                 >
-                  Journey Together with us
-                </Button>
-              </Center>
-            </VStack>
-          </Center>
-        </Box>
-      </Box>
+                  <Text style={[styles.linkText, { color: textColor }]}>
+                    Journey Together with us
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
     </KeyboardAwareScrollView>
   );
 }
@@ -152,5 +162,71 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
+  },
+  mainContainer: {
+    flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  formContainer: {
+    width: "100%",
+    maxWidth: 400,
+    gap: 32,
+  },
+  headerContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  heading: {
+    fontSize: 32,
+    fontWeight: "bold",
+  },
+  subheading: {
+    fontSize: 16,
+  },
+  inputContainer: {
+    borderRadius: 12,
+    padding: 24,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  inputWrapper: {
+    gap: 16,
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  footerContainer: {
+    alignItems: "center",
+    gap: 8,
+  },
+  footerText: {
+    fontSize: 16,
+  },
+  linkButton: {
+    padding: 8,
+  },
+  linkText: {
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { Session } from "@supabase/supabase-js";
-import { useColorScheme } from "react-native";
+import { useColorModeContext } from "../../contexts/ColorModeContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import {
   TextInput as PaperTextInput,
@@ -43,9 +43,9 @@ export default function Account() {
   const { userUpdated, setUserUpdated } = useApp();
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
-  // Theme colors using useColorScheme
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  // Theme colors using useColorModeContext
+  const { effectiveColorMode } = useColorModeContext();
+  const isDark = effectiveColorMode === "dark";
   const themeColors = {
     bgColor: isDark ? "#1F2937" : "white",
     cardBgColor: isDark ? "#374151" : "white",

@@ -8,7 +8,7 @@ import {
   Text,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useColorScheme } from "react-native";
+import { useColorModeContext } from "../contexts/ColorModeContext";
 import { Ionicons } from "@expo/vector-icons";
 
 interface Props {
@@ -22,9 +22,9 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarSize = { height: size, width: size };
 
-  // Theme colors using useColorScheme
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  // Theme colors using useColorModeContext
+  const { effectiveColorMode } = useColorModeContext();
+  const isDark = effectiveColorMode === "dark";
   const themeColors = {
     borderColor: isDark ? "#4B5563" : "#E5E7EB",
     avatarBgColor: isDark ? "#374151" : "#F3F4F6",

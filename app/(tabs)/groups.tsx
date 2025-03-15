@@ -2,28 +2,15 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
-  useColorScheme,
+  StyleSheet,
+  ScrollView,
 } from "react-native";
-// import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-// import { useGroups } from "../../contexts/GroupsContext";
-// import JoinGroupSection from "../../components/groups/JoinGroupSection";
-// import CreateGroupSection from "../../components/groups/CreateGroupSection";
-
-// Custom hook to handle theme colors
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return {
-    bgColor: isDark ? "#000000" : "white",
-    activeTabBorderColor: isDark ? "#FFFFFF" : "#000000",
-    borderColor: isDark ? "#333333" : "#E5E5E5",
-    textColor: isDark ? "white" : "#333333",
-    tabTextColor: isDark ? "#A1A1AA" : "#666666",
-  };
-};
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { useGroups } from "../../contexts/GroupsContext";
+import JoinGroupSection from "../../components/groups/JoinGroupSection";
+import CreateGroupSection from "../../components/groups/CreateGroupSection";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const GroupsContent = () => {
   const {
@@ -32,21 +19,13 @@ const GroupsContent = () => {
     borderColor,
     textColor,
     tabTextColor,
-  } = useThemeColors();
+  } = useGroups();
   const [activeTab, setActiveTab] = useState<"join" | "create">("create");
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
       {/* Heading */}
-      <View
-        style={[
-          styles.header,
-          {
-            borderBottomWidth: 0,
-            borderBottomColor: borderColor,
-          },
-        ]}
-      >
+      <View style={[styles.header, { borderBottomColor: borderColor }]}>
         <View style={styles.headerContent}>
           <Text style={[styles.heading, { color: textColor }]}>Groups</Text>
         </View>
@@ -101,7 +80,7 @@ const GroupsContent = () => {
       </View>
 
       {/* Tab Content */}
-      {/* <KeyboardAwareScrollView
+      <KeyboardAwareScrollView
         enableOnAndroid={true}
         enableAutomaticScroll={true}
         extraScrollHeight={20}
@@ -112,12 +91,12 @@ const GroupsContent = () => {
       >
         {activeTab === "join" && <JoinGroupSection />}
         {activeTab === "create" && (
-          <View style={styles.content}>
+          <View style={styles.contentContainer}>
             <CreateGroupSection />
           </View>
         )}
-      </KeyboardAwareScrollView> */}
-    </View>
+      </KeyboardAwareScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -132,6 +111,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingVertical: 8,
+    borderBottomWidth: 0,
   },
   headerContent: {
     flexDirection: "row",
@@ -139,7 +119,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heading: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
   },
   tabContainer: {
@@ -160,9 +140,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 20,
   },
-  content: {
-    marginTop: 16,
+  contentContainer: {
+    marginVertical: 16,
   },
 });

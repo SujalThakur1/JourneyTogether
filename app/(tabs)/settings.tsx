@@ -9,6 +9,7 @@ import {
   Image,
   Switch as RNSwitch,
   StatusBar as RNStatusBar,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,34 +17,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../lib/supabase";
 import { useApp } from "../../contexts/AppContext";
 import { useColorModeContext } from "../../contexts/ColorModeContext";
+import { useColors } from "../../contexts/ColorContext";
 import Toast from "react-native-toast-message"; // Toast replacement
 import { CACHE_KEYS } from "../../contexts/AppContext";
-import { useColorScheme } from "react-native";
-
-// Custom hook for theming
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return {
-    bgColor: isDark ? "#1F2937" : "white",
-    cardBgColor: isDark ? "#374151" : "#F9FAFB",
-    borderColor: isDark ? "#4B5563" : "#E5E7EB",
-    textColor: isDark ? "#F9FAFB" : "#1F2937",
-    subTextColor: isDark ? "#9CA3AF" : "#6B7280",
-    accentColor: "#ED851B", // Warm brown/gold accent (unchanged)
-    chevronColor: isDark ? "#9CA3AF" : "#666",
-    switchTrackColor: isDark ? "#3F3F46" : "#E4E4E7",
-    pressedBgColor: isDark ? "#4B5563" : "#F3F4F6",
-    whiteColor: isDark ? "#F7F5F2" : "#FFFFFF",
-    dangerColor: isDark ? "#EF4444" : "#B91C1C",
-    quickActionBgColor: isDark ? "#333333" : "#F0EDE8",
-    toggleBgColor: isDark ? "#333333" : "#F0EDE8",
-  };
-};
-
+ 
 export default function SettingsScreen() {
-  const colors = useThemeColors();
+  const colors = useColors();
   const { colorMode, toggleColorMode, setColorMode } = useColorModeContext();
   const router = useRouter();
   const {
@@ -158,20 +137,22 @@ export default function SettingsScreen() {
     { mode: "system", icon: "phone-portrait-outline", label: "System" },
   ];
 
-  // const toggleLocationTracking = async () => {
-  //   if (isTrackingLocation) {
-  //     stopTrackingLocation();
-  //   } else {
-  //     await startTrackingLocation();
-  //   }
-  // };
+  const toggleLocationTracking = async () => {
+    if (isTrackingLocation) {
+      stopTrackingLocation();
+    } else {
+      await startTrackingLocation();
+    }
+  };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgColor }]}>
-      {/* <RNStatusBar
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
+      <RNStatusBar
         barStyle={colorMode === "dark" ? "light-content" : "dark-content"}
         backgroundColor={colorMode === "dark" ? "#1A1A1A" : "#F7F5F2"}
-      /> */}
+      />
 
       <View style={[styles.header, { borderBottomColor: colors.borderColor }]}>
         <Text style={[styles.heading, { color: colors.textColor }]}>
@@ -252,11 +233,11 @@ export default function SettingsScreen() {
                 },
               ]}
             >
-              {/* <View style={styles.appearanceOptions}>
+              <View style={styles.appearanceOptions}>
                 {appearanceOptions.map((option) => (
                   <TouchableOpacity
                     key={option.mode}
-                    onPress={() => setColorMode(option.mode)}
+                    onPress={() => setColorMode(option.mode as any)}
                     style={styles.appearanceButton}
                   >
                     <View
@@ -271,7 +252,7 @@ export default function SettingsScreen() {
                       ]}
                     >
                       <Ionicons
-                        name={option.icon}
+                        name={option.icon as any}
                         size={24}
                         color={
                           colorMode === option.mode
@@ -295,7 +276,7 @@ export default function SettingsScreen() {
                     </View>
                   </TouchableOpacity>
                 ))}
-              </View> */}
+              </View>
             </View>
           </View>
 
@@ -402,14 +383,14 @@ export default function SettingsScreen() {
                   >
                     Location Tracking
                   </Text>
-                  {/* <Text style={{ color: colors.subTextColor, fontSize: 12 }}>
+                  <Text style={{ color: colors.subTextColor, fontSize: 12 }}>
                     {isTrackingLocation
                       ? "Your location is being tracked"
                       : "Enable to share your location"}
-                  </Text> */}
+                  </Text>
                 </View>
               </View>
-              {/* <RNSwitch
+              <RNSwitch
                 value={isTrackingLocation}
                 onValueChange={toggleLocationTracking}
                 trackColor={{
@@ -417,9 +398,9 @@ export default function SettingsScreen() {
                   true: colors.accentColor,
                 }}
                 thumbColor={colors.whiteColor}
-              /> */}
+              />
             </View>
-            {/* {userLocation && (
+            {userLocation && (
               <View
                 style={[
                   styles.locationInfo,
@@ -435,7 +416,7 @@ export default function SettingsScreen() {
                   {new Date(userLocation.timestamp).toLocaleTimeString()}
                 </Text>
               </View>
-            )} */}
+            )}
           </View>
 
           {/* Settings Sections */}
@@ -455,10 +436,10 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                {/* {section.items.map((item, itemIndex) => (
+                {section.items.map((item, itemIndex) => (
                   <TouchableOpacity
                     key={itemIndex}
-                    onPress={() => router.push(item.route)}
+                    onPress={() => router.push(item.route as any)}
                     activeOpacity={0.8}
                     style={styles.settingsItem}
                   >
@@ -470,7 +451,7 @@ export default function SettingsScreen() {
                         ]}
                       >
                         <Ionicons
-                          name={item.icon}
+                          name={item.icon as any}
                           size={16}
                           color={colors.accentColor}
                         />
@@ -485,13 +466,13 @@ export default function SettingsScreen() {
                       color={colors.chevronColor}
                     />
                   </TouchableOpacity>
-                ))} */}
+                ))}
               </View>
             </View>
           ))}
 
           {/* Sign Out Button */}
-          {/* <TouchableOpacity
+          <TouchableOpacity
             onPress={handleLogout}
             activeOpacity={0.8}
             style={[styles.signOutButton, { borderColor: colors.dangerColor }]}
@@ -504,17 +485,18 @@ export default function SettingsScreen() {
             <Text style={[styles.signOutText, { color: colors.dangerColor }]}>
               Sign Out
             </Text>
-          </TouchableOpacity> */}
+          </TouchableOpacity>
         </View>
       </ScrollView>
-      {/* <Toast /> */}
-    </View>
+      <Toast />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginBottom: 70,
   },
   header: {
     paddingHorizontal: 20,

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  useColorScheme,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../contexts/AppContext";
@@ -16,6 +15,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import Avatar from "../../components/Avatar";
+import { useColorModeContext } from "../../contexts/ColorModeContext";
 
 export default function ProfileSettings() {
   const router = useRouter();
@@ -31,9 +31,9 @@ export default function ProfileSettings() {
     avatar_url: userDetails?.avatar_url || "",
   });
 
-  // Theme colors using useColorScheme
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  // Theme colors using useColorModeContext
+  const { effectiveColorMode } = useColorModeContext();
+  const isDark = effectiveColorMode === "dark";
   const themeColors = {
     bgColor: isDark ? "#1F2937" : "white",
     cardBgColor: isDark ? "#374151" : "#F9FAFB",

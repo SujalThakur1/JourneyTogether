@@ -58,6 +58,9 @@ interface AppContextType {
   // Added properties for users
   users: any[]; // State to hold all users
   fetchAllUsers: () => Promise<void>; // Function to fetch users
+  isUsersLoading: boolean;
+  usersError: string | null;
+  hasAttemptedFetch: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -81,6 +84,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isTrackingLocation, setIsTrackingLocation] = useState(false);
   const [locationSubscription, setLocationSubscription] =
     useState<Location.LocationSubscription | null>(null);
+  const [isUsersLoading, setIsUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
 
   // Added state for users
   const [users, setUsers] = useState<any[]>([]); // Holds the list of users
@@ -104,36 +110,71 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Function to fetch all users, with caching and optional force refresh
   const fetchAllUsers = useCallback(
     async (forceRefresh: boolean = false) => {
+      // If already loading, don't start another fetch
+      if (isUsersLoading) return;
+
+      // Set loading state
+      setIsUsersLoading(true);
+      setUsersError(null);
+
       try {
-        // Check if cache is valid and not forcing a refresh
-        if (!forceRefresh && (await isUsersCacheValid())) {
+        // Check cache first if not forcing refresh
+        if (!forceRefresh) {
           const cachedUsers = await AsyncStorage.getItem(CACHE_KEYS.USERS);
           if (cachedUsers) {
-            // Load users from cache if available and valid
-            setUsers(JSON.parse(cachedUsers));
-            return;
+            const parsedUsers = JSON.parse(cachedUsers);
+            if (parsedUsers && parsedUsers.length > 0) {
+              // console.log(
+              //   "Using cached users data, count:",
+              //   parsedUsers.length
+              // );
+              setUsers(parsedUsers);
+              setHasAttemptedFetch(true);
+              setIsUsersLoading(false);
+              return;
+            }
           }
         }
 
-        // Fetch all users from Supabase if cache is invalid or forceRefresh is true
+        // If we get here, we need to fetch from Supabase
+        console.log("Fetching users from Supabase...");
         const { data, error } = await supabase.from("users").select("*");
-        if (error) throw error;
-        const usersData = data || []; // Default to empty array if no data
-        console.log("fetchUsers data", usersData);
-        // Update the users state with fetched data
-        setUsers(usersData);
+        console.log("Fetching2 users from Supabase...");
 
-        // Store the fetched users and timestamp in AsyncStorage
-        await AsyncStorage.setItem(CACHE_KEYS.USERS, JSON.stringify(usersData));
+        if (error) {
+          console.error("Supabase fetch error:", error.message);
+          throw new Error(`Failed to fetch users: ${error.message}`);
+        }
+
+        if (!data || data.length === 0) {
+          console.log("No users returned from Supabase");
+          setHasAttemptedFetch(true);
+          return;
+        }
+
+        console.log(
+          "Successfully fetched users from Supabase, count:",
+          data.length
+        );
+        setUsers(data);
+
+        // Update cache
+        await AsyncStorage.setItem(CACHE_KEYS.USERS, JSON.stringify(data));
         await AsyncStorage.setItem(
           CACHE_KEYS.USERS_CACHE_TIMESTAMP,
           Date.now().toString()
         );
-      } catch (error) {
-        console.error("Error fetching users:", error);
+
+        setHasAttemptedFetch(true);
+      } catch (error: any) {
+        console.error("Error in fetchAllUsers:", error);
+        setUsersError(error.message || "Failed to load users");
+        setHasAttemptedFetch(true);
+      } finally {
+        setIsUsersLoading(false);
       }
     },
-    [isUsersCacheValid]
+    [isUsersLoading]
   );
 
   // Existing fetchData function (unchanged, included for completeness)
@@ -418,6 +459,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     startTrackingLocation,
     stopTrackingLocation,
     updateLocation,
+    isUsersLoading,
+    usersError,
+    hasAttemptedFetch,
     users, // Provide users state to consumers
     fetchAllUsers, // Provide fetchAllUsers function to consumers
   };

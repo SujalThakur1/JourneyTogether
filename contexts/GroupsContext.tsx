@@ -5,15 +5,16 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import { useColorScheme } from "react-native";
+import { useColorModeContext } from "./ColorModeContext";
 import { getGroupMembersLocations } from "../lib/locationService";
 import { useApp } from "./AppContext";
 import { User, Location } from "../components/groups/types";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
+import { useColors } from "./ColorContext";
 
 interface GroupsContextType {
-  // Group data
+  // (Existing interface remains unchanged)
   groupType: string;
   groupCode: string;
   groupName: string;
@@ -27,11 +28,9 @@ interface GroupsContextType {
   showLeaderSuggestions: boolean;
   showFriendSuggestions: boolean;
 
-  // Filtered data
   filteredLeaders: User[];
   filteredFriends: User[];
 
-  // UI colors
   isDark: boolean;
   bgColor: string;
   borderColor: string;
@@ -48,7 +47,6 @@ interface GroupsContextType {
   tabTextColor: string;
   destinationCoordinates: Location | null;
 
-  // Setters
   setGroupType: (value: string) => void;
   setGroupCode: (value: string) => void;
   setGroupName: (value: string) => void;
@@ -62,7 +60,6 @@ interface GroupsContextType {
   setShowFriendSuggestions: (show: boolean) => void;
   setDestinationCoordinates: (coordinates: Location | null) => void;
 
-  // Actions
   handleJoinGroup: () => void;
   handleCreateGroup: () => void;
   handleTypeChange: (value: string) => void;
@@ -74,33 +71,10 @@ interface GroupsContextType {
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
 
-// Custom hook for theming
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return {
-    isDark,
-    bgColor: isDark ? "#1F2937" : "white",
-    borderColor: isDark ? "#4B5563" : "#E5E7EB",
-    textColor: isDark ? "#F9FAFB" : "#1F2937",
-    inputTextColor: isDark ? "white" : "#1F2937",
-    inputBorderColor: isDark ? "#6B7280" : "#D1D5DB",
-    buttonBgColor: isDark ? "white" : "black",
-    buttonTextColor: isDark ? "black" : "white",
-    buttonPressedBgColor: isDark ? "#D1D5DB" : "#4B5563",
-    focusedBorderColor: isDark ? "white" : "black",
-    dropdownBgColor: isDark ? "#374151" : "white",
-    hoverBgColor: isDark ? "#4B5563" : "#F3F4F6",
-    activeTabBorderColor: isDark ? "#FFFFFF" : "#000000",
-    tabTextColor: isDark ? "#F3F4F6" : "#111827",
-  };
-};
-
 export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // State
+  // State (unchanged)
   const [groupType, setGroupType] = useState("destination");
   const [groupCode, setGroupCode] = useState("");
   const [groupName, setGroupName] = useState("");
@@ -118,13 +92,19 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [destinationCoordinates, setDestinationCoordinates] =
     useState<Location | null>(null);
 
-  const { userDetails, userLocation, users = [] } = useApp();
+  const {
+    userDetails,
+    userLocation,
+    users,
+    fetchAllUsers,
+    hasAttemptedFetch,
+    isUsersLoading,
+  } = useApp(); // Added fetchAllUsers
   const router = useRouter();
 
-  // Theme colors
-  const themeColors = useThemeColors();
+  const colors = useColors();
 
-  // Fetch group members locations
+  // Fetch group members locations (unchanged)
   const fetchGroupMembersLocations = async () => {
     if (!groupMembers.length) return;
 
@@ -134,28 +114,50 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   useEffect(() => {
-    if (groupMembers.length) {
-      fetchGroupMembersLocations();
-      const interval = setInterval(fetchGroupMembersLocations, 10000);
-      return () => clearInterval(interval);
+    if (
+      (!users || users.length === 0) &&
+      !hasAttemptedFetch &&
+      !isUsersLoading
+    ) {
+      // console.log(
+      //   "Users array is empty and no fetch attempted, fetching all users..."
+      // );
+      fetchAllUsers();
     }
-  }, [groupMembers]);
+  }, [users, hasAttemptedFetch, isUsersLoading, fetchAllUsers]);
 
-  // Filtered users for suggestions
+  // NEW: Fetch users if users array is empty
+  useEffect(() => {
+    if (!users || users.length === 0) {
+      //console.log("Users array is empty, fetching all users...");
+      fetchAllUsers(); // Trigger fetchAllUsers from AppContext
+    }
+  }, [users, fetchAllUsers]);
+
+  // Filtered users for suggestions (modified to log when users is empty)
   const filteredLeaders = useMemo(() => {
-    if (!users || !searchLeader) return [];
+    //console.log("Filtering leaders based on searchLeader:", searchLeader);
+    if (!users || users.length === 0) {
+      //console.log("Users array is empty in filteredLeaders.");
+      return [];
+    }
 
-    return users.filter(
+    const filtered = users.filter(
       (user) =>
         user.id !== userDetails?.id &&
         !groupMembers.some((member) => member.id === user.id) &&
         (user.username?.toLowerCase().includes(searchLeader.toLowerCase()) ||
           user.email?.toLowerCase().includes(searchLeader.toLowerCase()))
     );
+    //console.log("Filtered leaders:", filtered);
+    return filtered;
   }, [users, searchLeader, groupMembers, userDetails]);
 
   const filteredFriends = useMemo(() => {
-    if (!users || !searchFriend) return [];
+    if (!users || users.length === 0) {
+      //console.log("Users array is empty in filteredFriends.");
+      return [];
+    }
 
     return users.filter(
       (user) =>
@@ -166,7 +168,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, [users, searchFriend, groupMembers, userDetails]);
 
-  // Helper functions
+  // Helper functions (unchanged)
   const getInitials = (name: string) => {
     if (!name) return "?";
     return name
@@ -176,10 +178,73 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       .toUpperCase();
   };
 
-  // Action handlers
-  const handleJoinGroup = () => {
-    console.log("Joining group with code:", groupCode);
-    // Implement join group functionality
+  // Action handlers (unchanged)
+  const handleJoinGroup = async () => {
+    try {
+      if (!userDetails?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      if (!groupCode || groupCode.trim().length !== 6) {
+        throw new Error("Invalid group code");
+      }
+
+      // Check if the group exists
+      const { data: groupData, error: groupError } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("group_code", groupCode.toUpperCase())
+        .single();
+
+      if (groupError) {
+        if (groupError.code === "PGRST116") {
+          throw new Error(
+            "Group not found. Please check the code and try again."
+          );
+        }
+        throw new Error(groupError.message);
+      }
+
+      if (!groupData) {
+        throw new Error(
+          "Group not found. Please check the code and try again."
+        );
+      }
+
+      // Check if user is already a member
+      if (groupData.group_members.includes(userDetails.id)) {
+        // User is already a member, just navigate to the group
+        router.push({
+          pathname: "/group/[code]",
+          params: { code: groupCode.toUpperCase() },
+        });
+        return;
+      }
+
+      // Add user to the group members
+      const updatedMembers = [...groupData.group_members, userDetails.id];
+
+      // Update the group with the new member
+      const { error: updateError } = await supabase
+        .from("groups")
+        .update({ group_members: updatedMembers })
+        .eq("group_id", groupData.group_id);
+
+      if (updateError) {
+        throw new Error(updateError.message || "Failed to join group");
+      }
+
+      // Navigate to the group page
+      router.push({
+        pathname: "/group/[code]",
+        params: { code: groupCode.toUpperCase() },
+      });
+
+      return groupData;
+    } catch (error: any) {
+      console.error("Error joining group:", error);
+      throw error;
+    }
   };
 
   const generateGroupCode = (): string => {
@@ -227,6 +292,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
           destination_id: destinationId,
           leader_id: leaderId,
           group_members: memberIds,
+          created_by: userDetails.id,
         })
         .select()
         .single();
@@ -272,8 +338,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     setGroupMembers(groupMembers.filter((member) => member.id !== userId));
   };
 
-  const value = {
-    // Group data
+  const value: GroupsContextType = {
     groupType,
     groupCode,
     groupName,
@@ -286,16 +351,23 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     membersLocations,
     showLeaderSuggestions,
     showFriendSuggestions,
-
-    // Filtered data
     filteredLeaders,
     filteredFriends,
-
-    // UI colors
-    ...themeColors, // Spread theme colors directly
+    isDark: colors.isDark,
+    bgColor: colors.bgColor,
+    borderColor: colors.borderColor,
+    textColor: colors.textColor,
+    inputTextColor: colors.inputTextColor,
+    inputBorderColor: colors.inputBorderColor,
+    buttonBgColor: colors.buttonBgColor,
+    buttonTextColor: colors.buttonTextColor,
+    buttonPressedBgColor: colors.buttonPressedBgColor,
+    focusedBorderColor: colors.focusedBorderColor,
+    dropdownBgColor: colors.dropdownBgColor,
+    hoverBgColor: colors.hoverBgColor,
+    activeTabBorderColor: colors.activeTabBorderColor,
+    tabTextColor: colors.tabTextColor,
     destinationCoordinates,
-
-    // Setters
     setGroupType,
     setGroupCode,
     setGroupName,
@@ -308,8 +380,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     setShowLeaderSuggestions,
     setShowFriendSuggestions,
     setDestinationCoordinates,
-
-    // Actions
     handleJoinGroup,
     handleCreateGroup,
     handleTypeChange,

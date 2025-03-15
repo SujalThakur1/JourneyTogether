@@ -1,23 +1,16 @@
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Platform, useColorScheme } from "react-native";
-
-// Custom hook to replace useColorModeValue
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  const bgColor = isDark ? "#000000" : "white";
-  const activeTintColor = isDark ? "#FFFFFF" : "#000000";
-  const inactiveTintColor = isDark ? "#666666" : "#757575";
-  const shadowOpacity = isDark ? 0.2 : 0.1;
-
-  return { bgColor, activeTintColor, inactiveTintColor, shadowOpacity };
-};
+import { Platform } from "react-native";
+import { useColorModeContext } from "../../contexts/ColorModeContext";
+import { useColors } from "../../contexts/ColorContext";
 
 export default function TabLayout() {
-  const { bgColor, activeTintColor, inactiveTintColor, shadowOpacity } =
-    useThemeColors();
+  const colors = useColors();
+
+  const bgColor = colors.navBgColor;
+  const activeTintColor = colors.textColor;
+  const inactiveTintColor = colors.mutedTextColor;
+  const shadowOpacity = colors.isDark ? 0.2 : 0.1;
 
   return (
     <Tabs

@@ -7,39 +7,20 @@ import {
   StyleSheet,
   TextInput,
   Animated,
-  useColorScheme,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-// import { DestinationsSection } from "../../components/DestinationsSection/index";
-// import { TopDestinationsSection } from "../../components/TopDestinationsSection/index";
+import { DestinationsSection } from "../../components/DestinationsSection/index";
+import { TopDestinationsSection } from "../../components/TopDestinationsSection/index";
 import { useApp } from "../../contexts/AppContext";
-
-// Custom hook to handle theme colors
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return {
-    textColor: isDark ? "white" : "gray.800",
-    iconColor: isDark ? "#FFF" : "#000",
-    searchBgColor: isDark ? "#27272a" : "#F5F5F5",
-    categoryBgColor: isDark ? "#27272a" : "#F5F5F5",
-    categoryTextColor: isDark ? "#A1A1AA" : "#666",
-    categoryActiveBgColor: isDark ? "#FFFFFF" : "#000000",
-    categoryActiveTextColor: isDark ? "#000000" : "#FFFFFF",
-    searchInputTextColor: isDark ? "#FFFFFF" : "#000000",
-    spinnerColor: isDark ? "#FFFFFF" : "#000000",
-    backgroundColor: isDark ? "#18181b" : "#FFFFFF",
-  };
-};
+import { useColors } from "../../contexts/ColorContext";
 
 export default function DiscoverScreen() {
   const { categories, isLoading, selectedCategory, setSelectedCategory } =
     useApp();
+  const colors = useColors(); // Use the centralized color context
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const colors = useThemeColors();
 
   // Animation setup for loading spinner
   const [spinValue] = useState(new Animated.Value(0));
@@ -72,7 +53,7 @@ export default function DiscoverScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.backgroundColor }]}
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
     >
       <View style={styles.header}>
         {!showSearch ? (
@@ -105,30 +86,26 @@ export default function DiscoverScreen() {
               <Ionicons
                 name="chevron-back"
                 size={24}
-                color={colors.iconColor}
+                color={colors.chevronColor}
               />
             </TouchableOpacity>
             <TextInput
               style={[
                 styles.searchInput,
                 {
-                  backgroundColor: colors.searchBgColor,
-                  color: colors.searchInputTextColor,
+                  backgroundColor: colors.quickActionBgColor,
+                  color: colors.inputTextColor,
                 },
               ]}
               placeholder="Search destinations..."
-              placeholderTextColor={colors.categoryTextColor}
+              placeholderTextColor={colors.mutedTextColor}
               value={searchText}
               onChangeText={setSearchText}
               autoFocus={true}
-              selectionColor={colors.iconColor}
+              selectionColor={colors.accentColor}
             />
             <TouchableOpacity style={styles.searchButton}>
-              <Ionicons
-                name="search"
-                size={20} 
-                color={colors.categoryTextColor}
-              />
+              <Ionicons name="search" size={20} color={colors.iconColor} />
             </TouchableOpacity>
           </View>
         )}
@@ -145,9 +122,9 @@ export default function DiscoverScreen() {
               key={category.category_id}
               style={[
                 styles.categoryButton,
-                { backgroundColor: colors.categoryBgColor },
+                { backgroundColor: colors.filterBgColor },
                 selectedCategory?.category_id === category.category_id && {
-                  backgroundColor: colors.categoryActiveBgColor,
+                  backgroundColor: colors.buttonBgColor,
                 },
               ]}
               onPress={() => handleCategoryPress(category)}
@@ -155,9 +132,9 @@ export default function DiscoverScreen() {
               <Text
                 style={[
                   styles.categoryText,
-                  { color: colors.categoryTextColor },
+                  { color: colors.filterTextColor },
                   selectedCategory?.category_id === category.category_id && {
-                    color: colors.categoryActiveTextColor,
+                    color: colors.buttonTextColor,
                   },
                 ]}
               >
@@ -179,9 +156,10 @@ export default function DiscoverScreen() {
                 styles.spinner,
                 {
                   transform: [{ rotate: spin }],
-                  borderTopColor: colors.spinnerColor,
-                  borderRightColor: colors.spinnerColor,
-                  borderBottomColor: colors.spinnerColor,
+                  borderTopColor: colors.accentColor,
+                  borderRightColor: colors.accentColor,
+                  borderBottomColor: colors.accentColor,
+                  borderLeftColor: `${colors.accentColor}33`, // 20% opacity
                 },
               ]}
             />
@@ -191,8 +169,8 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {/* <DestinationsSection />
-            <TopDestinationsSection /> */}
+            <DestinationsSection />
+            <TopDestinationsSection />
           </>
         )}
       </ScrollView>
@@ -272,7 +250,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderWidth: 4,
     borderRadius: 20,
-    borderColor: "rgba(0, 0, 0, 0.1)",
     marginBottom: 12,
   },
   loadingText: {

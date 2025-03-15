@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { supabase } from "../lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
 import { AppProvider } from "../contexts/AppContext";
-import { ColorModeProvider } from "@/contexts/ColorModeContext";
+import {
+  ColorModeProvider,
+  useColorModeContext,
+} from "@/contexts/ColorModeContext";
+import { ColorProvider } from "@/contexts/ColorContext";
+import "react-native-get-random-values";
 import { GroupsProvider } from "../contexts/GroupsContext";
+
+// Create a StatusBarComponent that uses the ColorModeContext
+function StatusBarComponent() {
+  const { effectiveColorMode } = useColorModeContext();
+  return <StatusBar style={effectiveColorMode === "dark" ? "light" : "dark"} />;
+}
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -90,19 +101,21 @@ export default function RootLayout() {
 
   return (
     <ColorModeProvider>
-      <AppProvider>
-        <GroupsProvider>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="(onboarding)"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-        </GroupsProvider>
-      </AppProvider>
+      <ColorProvider>
+        <AppProvider>
+          <GroupsProvider>
+            <StatusBarComponent />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(onboarding)"
+                options={{ headerShown: false }}
+              />
+            </Stack>
+          </GroupsProvider>
+        </AppProvider>
+      </ColorProvider>
     </ColorModeProvider>
   );
 }

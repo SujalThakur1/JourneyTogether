@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  useColorScheme,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useColorModeContext } from "../../contexts/ColorModeContext";
+import { useColors } from "../../contexts/ColorContext";
 
 interface Trip {
   id: number;
@@ -50,31 +52,10 @@ const MENU_ITEMS = [
   { icon: "checkmark-circle-outline" as const, label: "Status" },
 ];
 
-// Custom hook for theming
-const useThemeColors = () => {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-
-  return {
-    bgColor: isDark ? "#1F2937" : "white",
-    borderColor: isDark ? "#4B5563" : "#E5E7EB",
-    textColor: isDark ? "#F9FAFB" : "#111827",
-    cardBgColor: isDark ? "#374151" : "white",
-    filterBgColor: isDark ? "#4B5563" : "#F3F4F6",
-    filterTextColor: isDark ? "#D1D5DB" : "#666",
-    iconColor: isDark ? "#D1D5DB" : "#666",
-    buttonBgColor: isDark ? "white" : "black",
-    buttonTextColor: isDark ? "black" : "white",
-    tabTextColor: isDark ? "#F3F4F6" : "#111827",
-    activeTabBorderColor: isDark ? "#FFFFFF" : "#000000",
-    mutedTextColor: isDark ? "#9CA3AF" : "#6B7280",
-  };
-};
-
 export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [showFilter, setShowFilter] = useState(false);
-  const colors = useThemeColors();
+  const colors = useColors();
 
   const renderContent = () => {
     if (activeTab === 0) {
@@ -83,34 +64,34 @@ export default function HistoryScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scrollContent, styles.bottomPadding]}
         >
-          <View style={styles.content}>
-            <View style={styles.sectionHeader}>
+          <View style={[styles.content, { padding: 20 }]}>
+            <View style={[styles.sectionHeader, { marginBottom: 8 }]}>
               <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
                 Recent Trips
               </Text>
-              <TouchableOpacity
-                style={[
-                  styles.filterButton,
-                  { backgroundColor: colors.filterBgColor },
-                ]}
-                onPress={() => setShowFilter(!showFilter)}
-              >
-                <View style={styles.filterContent}>
-                  <Ionicons
-                    name="funnel-outline"
-                    size={16}
-                    color={colors.iconColor}
-                  />
-                  <Text
-                    style={[styles.filterText, { color: colors.textColor }]}
-                  >
-                    Filter
-                  </Text>
+              <TouchableOpacity onPress={() => setShowFilter(!showFilter)}>
+                <View
+                  style={[
+                    styles.filterButton,
+                    { backgroundColor: colors.filterBgColor },
+                  ]}
+                >
+                  <View style={styles.filterContent}>
+                    <Ionicons
+                      name="funnel-outline"
+                      size={16}
+                      color={colors.iconColor}
+                    />
+                    <Text
+                      style={[styles.filterText, { color: colors.textColor }]}
+                    >
+                      Filter
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             </View>
 
-            {/* Simple Filter Dropdown */}
             {showFilter && (
               <View
                 style={[
@@ -138,7 +119,6 @@ export default function HistoryScreen() {
               </View>
             )}
 
-            {/* Trip Cards */}
             {PAST_TRIPS?.map((trip) => (
               <View
                 key={trip.id}
@@ -152,13 +132,23 @@ export default function HistoryScreen() {
               >
                 <View style={styles.cardContent}>
                   <View style={styles.cardHeader}>
-                    <Text style={styles.statusBadge}>{trip.status}</Text>
+                    <Text
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: "#DCFCE7",
+                          color: "#15803D",
+                        },
+                      ]}
+                    >
+                      {trip.status}
+                    </Text>
                     <Text style={{ color: colors.mutedTextColor }}>
                       {trip.date}
                     </Text>
                   </View>
 
-                  <View style={styles.cardBody}>
+                  <View style={[styles.cardBody, { marginTop: 12 }]}>
                     <Image source={{ uri: trip.image }} style={styles.avatar} />
                     <View style={styles.tripDetails}>
                       <Text
@@ -170,7 +160,7 @@ export default function HistoryScreen() {
                         <Ionicons name="location-outline" size={14} />{" "}
                         {trip.location}
                       </Text>
-                      <View style={styles.tags}>
+                      <View style={[styles.tags, { marginTop: 4 }]}>
                         {trip.tags.map((tag, index) => (
                           <Text
                             key={index}
@@ -179,6 +169,7 @@ export default function HistoryScreen() {
                               {
                                 borderColor:
                                   index === 0 ? "#3B82F6" : "#F97316",
+                                color: index === 0 ? "#3B82F6" : "#F97316",
                               },
                             ]}
                           >
@@ -189,7 +180,12 @@ export default function HistoryScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.divider} />
+                  <View
+                    style={[
+                      styles.divider,
+                      { backgroundColor: colors.borderColor },
+                    ]}
+                  />
 
                   <View style={styles.cardFooter}>
                     <Text style={{ color: colors.mutedTextColor }}>
@@ -203,7 +199,11 @@ export default function HistoryScreen() {
                           size={16}
                           color={colors.iconColor}
                         />
-                        <Text style={styles.detailsText}>View Details</Text>
+                        <Text
+                          style={[styles.detailsText, { color: "#3B82F6" }]}
+                        >
+                          View Details
+                        </Text>
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -211,7 +211,6 @@ export default function HistoryScreen() {
               </View>
             ))}
 
-            {/* Empty State */}
             <View
               style={[
                 styles.emptyState,
@@ -236,7 +235,7 @@ export default function HistoryScreen() {
                 ]}
               >
                 <Text
-                  style={{ color: colors.buttonTextColor, fontWeight: "bold" }}
+                  style={[styles.buttonText, { color: colors.buttonTextColor }]}
                 >
                   Explore Trips
                 </Text>
@@ -251,8 +250,7 @@ export default function HistoryScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, styles.bottomPadding]}
       >
-        <View style={styles.content}>
-          {/* Empty State for Saved Trips */}
+        <View style={[styles.content, { padding: 20 }]}>
           <View
             style={[styles.emptyState, { backgroundColor: colors.cardBgColor }]}
           >
@@ -275,7 +273,7 @@ export default function HistoryScreen() {
               ]}
             >
               <Text
-                style={{ color: colors.buttonTextColor, fontWeight: "bold" }}
+                style={[styles.buttonText, { color: colors.buttonTextColor }]}
               >
                 Browse Trips
               </Text>
@@ -287,7 +285,9 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgColor }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
       <View style={[styles.header, { borderBottomColor: colors.borderColor }]}>
         <Text style={[styles.heading, { color: colors.textColor }]}>
           History
@@ -344,7 +344,7 @@ export default function HistoryScreen() {
       </View>
 
       {renderContent()}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   heading: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
   },
   tabContainer: {
@@ -379,14 +379,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  content: {
-    padding: 20,
-  },
+  content: {},
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -424,6 +421,7 @@ const styles = StyleSheet.create({
   },
   filterItemText: {
     marginLeft: 8,
+    fontSize: 14,
   },
   card: {
     padding: 16,
@@ -445,15 +443,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statusBadge: {
-    backgroundColor: "#DCFCE7",
-    color: "#15803D",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    fontSize: 12,
   },
   cardBody: {
     flexDirection: "row",
-    marginTop: 12,
   },
   avatar: {
     width: 64,
@@ -465,12 +461,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tripTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
   },
   tags: {
     flexDirection: "row",
-    marginTop: 4,
   },
   tag: {
     borderWidth: 1,
@@ -478,10 +473,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginRight: 4,
+    fontSize: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
     marginVertical: 12,
   },
   cardFooter: {
@@ -494,8 +489,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   detailsText: {
-    color: "#3B82F6",
     marginLeft: 4,
+    fontSize: 14,
   },
   emptyState: {
     padding: 24,
@@ -506,6 +501,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    marginTop: 16,
   },
   emptyTitle: {
     fontSize: 18,
@@ -518,6 +514,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 8,
     marginTop: 12,
+  },
+  buttonText: {
+    fontWeight: "bold",
+    fontSize: 14,
   },
   bottomPadding: {
     paddingBottom: 45,

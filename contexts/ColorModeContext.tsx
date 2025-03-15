@@ -32,13 +32,18 @@ export function ColorModeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem("colorMode", colorMode).catch((error) =>
       console.error("Error saving color mode:", error)
     );
-  }, [colorMode]);
+
+    // Log the color mode change for debugging
+    console.log("Color mode changed to:", colorMode);
+    console.log("Effective color mode:", effectiveColorMode);
+  }, [colorMode, effectiveColorMode]);
 
   const loadColorMode = async () => {
     try {
       const savedMode = await AsyncStorage.getItem("colorMode");
       if (savedMode) {
         setColorMode(savedMode as ColorModeType);
+        console.log("Loaded saved color mode:", savedMode);
       }
     } catch (error) {
       console.error("Error loading color mode:", error);
@@ -51,6 +56,7 @@ export function ColorModeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleSetColorMode = (mode: ColorModeType) => {
+    console.log("Setting color mode to:", mode);
     setColorMode(mode);
   };
 
