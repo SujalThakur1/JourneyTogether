@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColors } from "../../contexts/ColorContext";
+import { useGroups } from "../../contexts/GroupsContext";
+import MapView, { Marker } from "react-native-maps";
 
 interface GroupCardProps {
   group: {
@@ -22,9 +24,32 @@ interface GroupCardProps {
 const GroupCard: React.FC<GroupCardProps> = ({ group, isUserCreator }) => {
   const router = useRouter();
   const colors = useColors();
+  const { fetchDestinationDetails } = useGroups();
+
+  const [destinationDetails, setDestinationDetails] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   const memberCount = group.group_members.length;
   const isDestinationGroup = group.group_type === "TravelToDestination";
+
+  // Fetch destination details if this is a destination group
+  useEffect(() => {
+    const loadDestinationDetails = async () => {
+      if (isDestinationGroup && group.destination_id) {
+        try {
+          setLoading(true);
+          const details = await fetchDestinationDetails(group.destination_id);
+          setDestinationDetails(details);
+        } catch (error) {
+          console.error("Error fetching destination details:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadDestinationDetails();
+  }, [isDestinationGroup, group.destination_id, fetchDestinationDetails]);
 
   const navigateToGroup = () => {
     router.push({
@@ -72,6 +97,13 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isUserCreator }) => {
               {isDestinationGroup ? "Destination Group" : "Follow Group"} •{" "}
               {memberCount} {memberCount === 1 ? "member" : "members"}
             </Text>
+            {isDestinationGroup && destinationDetails && (
+              <Text
+                style={[styles.destinationName, { color: colors.accentColor }]}
+              >
+                {destinationDetails.name}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -93,6 +125,36 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isUserCreator }) => {
           />
         </View>
       </View>
+
+      {/* Map for destination groups */}
+      {isDestinationGroup &&
+        destinationDetails &&
+        destinationDetails.latitude &&
+        destinationDetails.longitude && (
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: destinationDetails.latitude,
+                longitude: destinationDetails.longitude,
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+            >
+              <Marker
+                coordinate={{
+                  latitude: destinationDetails.latitude,
+                  longitude: destinationDetails.longitude,
+                }}
+                title={destinationDetails.name}
+              />
+            </MapView>
+          </View>
+        )}
     </TouchableOpacity>
   );
 };
@@ -136,6 +198,11 @@ const styles = StyleSheet.create({
   },
   groupInfo: {
     fontSize: 14,
+    marginBottom: 4,
+  },
+  destinationName: {
+    fontSize: 14,
+    fontWeight: "500",
   },
   rightContent: {
     flexDirection: "row",
@@ -151,6 +218,15 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "500",
+  },
+  mapContainer: {
+    height: 120,
+    marginTop: 12,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  map: {
+    flex: 1,
   },
 });
 

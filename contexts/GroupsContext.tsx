@@ -5,13 +5,12 @@ import React, {
   useEffect,
   useMemo,
 } from "react";
-import { useColorModeContext } from "./ColorModeContext";
+import { useColors } from "./ColorContext"; // Assuming this is the correct import
 import { getGroupMembersLocations } from "../lib/locationService";
 import { useApp } from "./AppContext";
 import { User, Location } from "../components/groups/types";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
-import { useColors } from "./ColorContext";
 
 // Define Group interface
 export interface Group {
@@ -38,7 +37,6 @@ export interface CreateGroupParams {
 }
 
 interface GroupsContextType {
-  // (Existing interface remains unchanged)
   groupType: string;
   groupCode: string;
   groupName: string;
@@ -70,8 +68,8 @@ interface GroupsContextType {
   activeTabBorderColor: string;
   tabTextColor: string;
   destinationCoordinates: Location | null;
+  destinationId: number | null;
 
-  // New properties for groups list
   userGroups: Group[];
   isLoadingGroups: boolean;
   groupsError: string | null;
@@ -88,6 +86,7 @@ interface GroupsContextType {
   setShowLeaderSuggestions: (show: boolean) => void;
   setShowFriendSuggestions: (show: boolean) => void;
   setDestinationCoordinates: (coordinates: Location | null) => void;
+  setDestinationId: (id: number | null) => void;
 
   handleJoinGroup: () => void;
   handleCreateGroup: () => void;
@@ -97,13 +96,12 @@ interface GroupsContextType {
   removeMember: (userId: string) => void;
   getInitials: (name: string) => string;
 
-  // New functions for groups list
   fetchUserGroups: () => Promise<void>;
   refreshGroups: () => Promise<void>;
 
-  // Standalone methods for creating and joining groups
   createGroup: (params: CreateGroupParams) => Promise<Group>;
   joinGroup: (code: string) => Promise<Group>;
+  fetchDestinationDetails: (destinationId: number) => Promise<any>;
 }
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
@@ -111,11 +109,11 @@ const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
 export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // State (unchanged)
   const [groupType, setGroupType] = useState("destination");
   const [groupCode, setGroupCode] = useState("");
   const [groupName, setGroupName] = useState("");
   const [destination, setDestination] = useState("");
+  const [destinationId, setDestinationId] = useState<number | null>(null);
   const [searchFriend, setSearchFriend] = useState("");
   const [searchLeader, setSearchLeader] = useState("");
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
@@ -129,7 +127,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [destinationCoordinates, setDestinationCoordinates] =
     useState<Location | null>(null);
 
-  // New state for groups list
   const [userGroups, setUserGroups] = useState<Group[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
@@ -141,19 +138,16 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchAllUsers,
     hasAttemptedFetch,
     isUsersLoading,
-  } = useApp(); // Added fetchAllUsers
+  } = useApp();
   const router = useRouter();
-
   const colors = useColors();
 
-  // Fetch user's groups when userDetails changes
   useEffect(() => {
     if (userDetails?.id) {
       fetchUserGroups();
     }
   }, [userDetails]);
 
-  // Fetch group members locations (unchanged)
   const fetchGroupMembersLocations = async () => {
     if (!groupMembers.length) return;
 
@@ -168,26 +162,18 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       !hasAttemptedFetch &&
       !isUsersLoading
     ) {
-      // console.log(
-      //   "Users array is empty and no fetch attempted, fetching all users..."
-      // );
       fetchAllUsers();
     }
   }, [users, hasAttemptedFetch, isUsersLoading, fetchAllUsers]);
 
-  // NEW: Fetch users if users array is empty
   useEffect(() => {
     if (!users || users.length === 0) {
-      //console.log("Users array is empty, fetching all users...");
-      fetchAllUsers(); // Trigger fetchAllUsers from AppContext
+      fetchAllUsers();
     }
   }, [users, fetchAllUsers]);
 
-  // Filtered users for suggestions (modified to log when users is empty)
   const filteredLeaders = useMemo(() => {
-    //console.log("Filtering leaders based on searchLeader:", searchLeader);
     if (!users || users.length === 0) {
-      //console.log("Users array is empty in filteredLeaders.");
       return [];
     }
 
@@ -198,13 +184,11 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         (user.username?.toLowerCase().includes(searchLeader.toLowerCase()) ||
           user.email?.toLowerCase().includes(searchLeader.toLowerCase()))
     );
-    //console.log("Filtered leaders:", filtered);
     return filtered;
   }, [users, searchLeader, groupMembers, userDetails]);
 
   const filteredFriends = useMemo(() => {
     if (!users || users.length === 0) {
-      //console.log("Users array is empty in filteredFriends.");
       return [];
     }
 
@@ -217,7 +201,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }, [users, searchFriend, groupMembers, userDetails]);
 
-  // Helper functions (unchanged)
   const getInitials = (name: string) => {
     if (!name) return "?";
     return name
@@ -227,7 +210,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       .toUpperCase();
   };
 
-  // New function to fetch user's groups
   const fetchUserGroups = async () => {
     if (!userDetails?.id) return;
 
@@ -235,7 +217,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoadingGroups(true);
       setGroupsError(null);
 
-      // Fetch groups where user is a member
       const { data, error } = await supabase
         .from("groups")
         .select("*")
@@ -258,12 +239,10 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Function to refresh groups
   const refreshGroups = async () => {
     await fetchUserGroups();
   };
 
-  // Action handlers (unchanged)
   const handleJoinGroup = async () => {
     try {
       if (!userDetails?.id) {
@@ -274,7 +253,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Invalid group code");
       }
 
-      // Check if the group exists
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
         .select("*")
@@ -296,9 +274,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         );
       }
 
-      // Check if user is already a member
       if (groupData.group_members.includes(userDetails.id)) {
-        // User is already a member, just navigate to the group
         router.push({
           pathname: "/group/[code]",
           params: { code: groupCode.toUpperCase() },
@@ -306,10 +282,8 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         return;
       }
 
-      // Add user to the group members
       const updatedMembers = [...groupData.group_members, userDetails.id];
 
-      // Update the group with the new member
       const { error: updateError } = await supabase
         .from("groups")
         .update({ group_members: updatedMembers })
@@ -319,10 +293,8 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(updateError.message || "Failed to join group");
       }
 
-      // Refresh groups list
       await fetchUserGroups();
 
-      // Navigate to the group page
       router.push({
         pathname: "/group/[code]",
         params: { code: groupCode.toUpperCase() },
@@ -357,10 +329,12 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       const newGroupCode = generateGroupCode();
       const dbGroupType =
         groupType === "destination" ? "TravelToDestination" : "FollowMember";
-      let destinationId = null;
-      if (groupType === "destination" && destination) {
-        destinationId = parseInt(destination, 10) || null;
+
+      let destId = destinationId;
+      if (groupType === "destination" && !destId && destination) {
+        destId = parseInt(destination, 10) || null;
       }
+
       const leaderId =
         groupType === "follow" && selectedLeader
           ? selectedLeader.id
@@ -377,7 +351,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
           group_name: groupName,
           group_code: newGroupCode,
           group_type: dbGroupType,
-          destination_id: destinationId,
+          destination_id: destId,
           leader_id: leaderId,
           group_members: memberIds,
           created_by: userDetails.id,
@@ -393,7 +367,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log("Group created successfully:", data);
       setGroupCode(newGroupCode);
 
-      // Refresh groups list
       await fetchUserGroups();
 
       router.push({
@@ -430,7 +403,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     setGroupMembers(groupMembers.filter((member) => member.id !== userId));
   };
 
-  // Standalone method to create a group
   const createGroup = async (params: CreateGroupParams): Promise<Group> => {
     try {
       if (!userDetails?.id) {
@@ -438,8 +410,8 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const newGroupCode = generateGroupCode();
-      const memberIds = [userDetails.id]; // Creator is always a member
-      const leaderId = userDetails.id; // Default leader is the creator
+      const memberIds = [userDetails.id];
+      const leaderId = userDetails.id;
 
       const { data, error } = await supabase
         .from("groups")
@@ -463,7 +435,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       console.log("Group created successfully:", data);
 
-      // Refresh groups list
       await fetchUserGroups();
 
       return data;
@@ -473,7 +444,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Standalone method to join a group
   const joinGroup = async (code: string): Promise<Group> => {
     try {
       if (!userDetails?.id) {
@@ -484,7 +454,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error("Invalid group code");
       }
 
-      // Check if the group exists
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
         .select("*")
@@ -506,15 +475,12 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         );
       }
 
-      // Check if user is already a member
       if (groupData.group_members.includes(userDetails.id)) {
-        return groupData; // User is already a member
+        return groupData;
       }
 
-      // Add user to the group members
       const updatedMembers = [...groupData.group_members, userDetails.id];
 
-      // Update the group with the new member
       const { error: updateError } = await supabase
         .from("groups")
         .update({ group_members: updatedMembers })
@@ -524,12 +490,43 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error(updateError.message || "Failed to join group");
       }
 
-      // Refresh groups list
       await fetchUserGroups();
 
       return { ...groupData, group_members: updatedMembers };
     } catch (error: any) {
       console.error("Error joining group:", error);
+      throw error;
+    }
+  };
+
+  // Updated function to fetch destination details
+  const fetchDestinationDetails = async (destinationId: number) => {
+    try {
+      // Fetch destination details including images array and primary_image
+      const { data: destination, error: destError } = await supabase
+        .from("destination")
+        .select("*, images, primary_image") // Select images array and primary_image directly
+        .eq("destination_id", destinationId)
+        .single();
+
+      if (destError) {
+        console.error("Error fetching destination:", destError);
+        throw new Error(destError.message);
+      }
+
+      if (!destination) {
+        throw new Error("Destination not found");
+      }
+
+      // The images are already part of the destination object as an array
+      // Optionally, structure the response to match the expected format
+      return {
+        ...destination,
+        images: destination.images || [], // Ensure images is an array, default to empty if null
+        primary_image: destination.primary_image || null, // Include primary_image
+      };
+    } catch (error) {
+      console.error("Error in fetchDestinationDetails:", error);
       throw error;
     }
   };
@@ -564,7 +561,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     activeTabBorderColor: colors.activeTabBorderColor,
     tabTextColor: colors.tabTextColor,
     destinationCoordinates,
-    // New properties
+    destinationId,
     userGroups,
     isLoadingGroups,
     groupsError,
@@ -580,6 +577,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     setShowLeaderSuggestions,
     setShowFriendSuggestions,
     setDestinationCoordinates,
+    setDestinationId,
     handleJoinGroup,
     handleCreateGroup,
     handleTypeChange,
@@ -587,12 +585,11 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     selectLeader,
     removeMember,
     getInitials,
-    // New functions
     fetchUserGroups,
     refreshGroups,
-    // Standalone methods
     createGroup,
     joinGroup,
+    fetchDestinationDetails,
   };
 
   return (

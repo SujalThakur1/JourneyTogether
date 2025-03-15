@@ -13,6 +13,7 @@ import * as Yup from "yup";
 import EmailInput from "../../components/EmailInput";
 import PasswordInput from "../../components/PasswordInput";
 import { useRouter } from "expo-router";
+import { requestLocationPermission } from "../../lib/locationService";
 
 const SignUpSchema = Yup.object().shape({
   email: Yup.string()
@@ -71,6 +72,9 @@ export default function SignUp() {
             await supabase.auth.signOut();
             return;
           }
+
+          // Request location permission after successful sign-up
+          requestLocationPermission();
 
           router.push("/(onboarding)/Account");
         } catch (dbError: any) {

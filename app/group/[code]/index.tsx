@@ -18,8 +18,11 @@ import * as Location from "expo-location";
 import {
   getGroupMembersLocations,
   UserLocation,
+  checkAndRequestLocationPermission,
 } from "../../../lib/locationService";
 import { useColorModeContext } from "../../../contexts/ColorModeContext";
+import DestinationDetails from "../../../components/groups/DestinationDetails";
+import { useGroups } from "../../../contexts/GroupsContext";
 
 // Define types
 interface Group {
@@ -62,12 +65,13 @@ interface Region {
 }
 
 const GroupMapScreen = () => {
-  const { code } = useLocalSearchParams();
+  const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
   const { userDetails, userLocation, startTrackingLocation } = useApp();
   const mapRef = useRef<MapView>(null);
   const { effectiveColorMode } = useColorModeContext();
   const isDark = effectiveColorMode === "dark";
+  const { fetchDestinationDetails } = useGroups();
 
   // State
   const [group, setGroup] = useState<Group | null>(null);
@@ -200,15 +204,13 @@ const GroupMapScreen = () => {
         setGroup(groupData);
 
         if (groupData.destination_id) {
-          const { data: destinationData, error: destinationError } =
-            await supabase
-              .from("destination")
-              .select("*")
-              .eq("destination_id", groupData.destination_id)
-              .single();
-
-          if (!destinationError && destinationData) {
+          try {
+            const destinationData = await fetchDestinationDetails(
+              groupData.destination_id
+            );
             setDestination(destinationData);
+          } catch (error) {
+            console.error("Error fetching destination details:", error);
           }
         }
 
@@ -333,23 +335,39 @@ const GroupMapScreen = () => {
 
   const joinGroup = async () => {
     if (!group || !userDetails) return;
+
     try {
-      const updatedMembers = [...group.group_members, userDetails.id];
-      const { error } = await supabase
-        .from("groups")
-        .update({ group_members: updatedMembers })
-        .eq("group_id", group.group_id);
+      // Check location permission before joining group
+      const hasLocationPermission = await checkAndRequestLocationPermission(
+        // Success callback
+        async () => {
+          const updatedMembers = [...group.group_members, userDetails.id];
+          const { error } = await supabase
+            .from("groups")
+            .update({ group_members: updatedMembers })
+            .eq("group_id", group.group_id);
 
-      if (error) throw error;
+          if (error) throw error;
 
-      setGroup({ ...group, group_members: updatedMembers });
-      const { data: membersData } = await supabase
-        .from("users")
-        .select("id, username, avatar_url, email")
-        .in("id", updatedMembers);
+          setGroup({ ...group, group_members: updatedMembers });
+          const { data: membersData } = await supabase
+            .from("users")
+            .select("id, username, avatar_url, email")
+            .in("id", updatedMembers);
 
-      if (membersData) setMembers(membersData);
-      startTrackingLocation();
+          if (membersData) setMembers(membersData);
+          startTrackingLocation();
+        },
+        // Cancel callback
+        () => {
+          console.log("User canceled location permission");
+        }
+      );
+
+      // If permission check is handling the flow, we don't need to continue
+      if (!hasLocationPermission) {
+        return;
+      }
     } catch (error) {
       console.error("Error joining group:", error);
     }
@@ -669,6 +687,109 @@ const GroupMapScreen = () => {
           )}
         </View>
       )}
+
+      <View
+        style={[
+          styles.bottomSheet,
+          { backgroundColor: cardBgColor, borderTopColor: borderColor },
+        ]}
+      >
+        <View style={[styles.bottomSheetHandle]} />
+
+        {/* Group Info Section */}
+        <ScrollView style={styles.groupInfoSection}>
+          <Text style={[styles.groupName, { color: textColor }]}>
+            {group.group_name}
+          </Text>
+          <Text style={[styles.groupType]}>
+            {group.group_type === "TravelToDestination"
+              ? "Destination Group"
+              : "Follow Group"}
+          </Text>
+
+          {/* Destination Details Section */}
+          {group.group_type === "TravelToDestination" &&
+            group.destination_id && (
+              <View style={styles.destinationSection}>
+                <DestinationDetails destinationId={group.destination_id} />
+              </View>
+            )}
+
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[styles.actionButton]}
+              onPress={shareGroupCode}
+            >
+              <MaterialIcons name="share" size={20} />
+              <Text style={[styles.actionButtonText]}>Share</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton]}
+              onPress={fitToMarkers}
+            >
+              <MaterialIcons name="my-location" size={20} />
+              <Text style={[styles.actionButtonText]}>Fit Map</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Members Section */}
+          <View style={styles.membersSection}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>
+              Group Members ({membersWithLocations.length})
+            </Text>
+            {membersWithLocations.map((member) => (
+              <View
+                key={member.id}
+                style={[
+                  styles.memberItem,
+                  {
+                    backgroundColor: cardBgColor,
+                    borderColor: borderColor,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.memberAvatar,
+                    {
+                      backgroundColor:
+                        member.id === group.leader_id ? "#FBBF24" : "#3B82F6",
+                    },
+                  ]}
+                >
+                  <Text style={styles.memberAvatarText}>
+                    {getInitials(member.username)}
+                  </Text>
+                </View>
+                <View style={styles.memberInfo}>
+                  <Text style={[styles.memberName, { color: textColor }]}>
+                    {member.username}
+                    {member.id === group.leader_id && (
+                      <Text style={{ color: "#FBBF24" }}> (Leader)</Text>
+                    )}
+                    {member.id === userDetails?.id && (
+                      <Text style={{ color: "#3B82F6" }}> (You)</Text>
+                    )}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.memberStatus,
+                      {
+                        color: member.location ? "#22C55E" : "#6B7280",
+                      },
+                    ]}
+                  >
+                    {member.location
+                      ? "Location available"
+                      : "No location data"}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
     </View>
   );
 };
@@ -848,6 +969,79 @@ const styles = StyleSheet.create({
   },
   calloutSubtitle: {
     fontSize: 12,
+  },
+  bottomSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    maxHeight: "40%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+  },
+  bottomSheetHandle: {
+    height: 4,
+    width: 40,
+    borderRadius: 2,
+    backgroundColor: "#E5E7EB",
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  groupInfoSection: {
+    flex: 1,
+  },
+  groupName: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  groupType: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  destinationSection: {
+    marginBottom: 16,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  buttonBgColor: {
+    backgroundColor: "#3B82F6",
+  },
+  buttonTextColor: {
+    color: "white",
+  },
+  subTextColor: {
+    color: "#6B7280",
+  },
+  handleColor: {
+    backgroundColor: "#E5E7EB",
+  },
+  membersSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  memberInfo: {
+    flex: 1,
   },
 });
 

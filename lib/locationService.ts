@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { Platform } from "react-native";
+import { Platform, Alert, Linking } from "react-native";
 import { supabase } from "./supabase";
 
 export type UserLocation = {
@@ -171,5 +171,74 @@ export async function getGroupMembersLocations(
   } catch (error) {
     console.error("Error in getGroupMembersLocations:", error);
     return {};
+  }
+}
+
+export async function checkAndRequestLocationPermission(
+  onSuccess?: () => void,
+  onCancel?: () => void
+): Promise<boolean> {
+  try {
+    // First check if location services are enabled
+    const servicesEnabled = await checkLocationServicesEnabled();
+
+    if (!servicesEnabled) {
+      // Location services are not enabled, show alert
+      Alert.alert(
+        "Location Services Disabled",
+        "Please enable location services in your device settings to use this feature.",
+        [
+          { text: "Cancel", style: "cancel", onPress: onCancel },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              Platform.OS === "ios"
+                ? Linking.openURL("app-settings:")
+                : Linking.openSettings();
+              if (onCancel) onCancel();
+            },
+          },
+        ]
+      );
+      return false;
+    }
+
+    // Check if we already have permission
+    const { status } = await Location.getForegroundPermissionsAsync();
+
+    if (status === "granted") {
+      if (onSuccess) onSuccess();
+      return true;
+    }
+
+    // Request permission
+    const granted = await requestLocationPermission();
+
+    if (granted) {
+      if (onSuccess) onSuccess();
+      return true;
+    } else {
+      // Permission denied, show alert
+      Alert.alert(
+        "Location Permission Required",
+        "This feature requires location permission. Please enable it in your device settings.",
+        [
+          { text: "Cancel", style: "cancel", onPress: onCancel },
+          {
+            text: "Open Settings",
+            onPress: () => {
+              Platform.OS === "ios"
+                ? Linking.openURL("app-settings:")
+                : Linking.openSettings();
+              if (onCancel) onCancel();
+            },
+          },
+        ]
+      );
+      return false;
+    }
+  } catch (error) {
+    console.error("Error checking location permission:", error);
+    return false;
   }
 }

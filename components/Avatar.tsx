@@ -8,8 +8,9 @@ import {
   Text,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useColorModeContext } from "../contexts/ColorModeContext";
+import { useColors } from "../contexts/ColorContext";
 import { Ionicons } from "@expo/vector-icons";
+import * as Animatable from "react-native-animatable";
 
 interface Props {
   size: number;
@@ -21,119 +22,70 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarSize = { height: size, width: size };
-
-  // Theme colors using useColorModeContext
-  const { effectiveColorMode } = useColorModeContext();
-  const isDark = effectiveColorMode === "dark";
-  const themeColors = {
-    borderColor: isDark ? "#4B5563" : "#E5E7EB",
-    avatarBgColor: isDark ? "#374151" : "#F3F4F6",
-    placeholderIconColor: isDark ? "#6B7280" : "#9CA3AF",
-    textColor: isDark ? "white" : "black",
-    cameraIconColor: isDark ? "white" : "black",
-    cameraIconBgColor: isDark ? "#374151" : "white",
-    uploadingOverlayColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.7)",
-  };
+  const colors = useColors();
 
   useEffect(() => {
-    // Set initial avatar URL from props
     setAvatarUrl(url);
   }, [url]);
 
   async function uploadAvatar() {
     try {
       setUploading(true);
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: false,
         allowsEditing: true,
         quality: 1,
-        aspect: [1, 1], // Enforce square aspect ratio for avatar
+        aspect: [1, 1],
       });
 
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        console.log("User cancelled image picker.");
-        return;
-      }
+      if (result.canceled || !result.assets?.length) return;
 
       const image = result.assets[0];
-      console.log("Selected image:", image);
-
-      if (!image.uri) {
-        console.error(
-          "Upload failed: No image URI available in selected asset"
-        );
-        throw new Error("No image uri!");
-      }
-
-      // Set temporary preview immediately
       setAvatarUrl(image.uri);
 
-      const arraybuffer = await fetch(image.uri)
-        .then((res) => res.arrayBuffer())
-        .catch((error) => {
-          console.error(
-            "Failed to fetch and convert image to array buffer:",
-            error
-          );
-          throw error;
-        });
-
-      const fileExt = image.uri?.split(".").pop()?.toLowerCase() ?? "jpeg";
+      const arraybuffer = await fetch(image.uri).then((res) =>
+        res.arrayBuffer()
+      );
+      const fileExt = image.uri.split(".").pop()?.toLowerCase() ?? "jpeg";
       const fileName = `${Date.now()}.${fileExt}`;
-      console.log("Attempting upload with filename:", fileName);
 
-      // Upload the file to Supabase
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(fileName, arraybuffer, {
           contentType: image.mimeType ?? "image/jpeg",
         });
 
-      if (uploadError) {
-        console.error("Supabase storage upload failed:", uploadError);
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
-      console.log("File uploaded successfully to Supabase storage");
-
-      // Get the public URL
       const {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(fileName);
 
-      if (!publicUrl) {
-        console.error("Failed to generate public URL for uploaded file");
-        throw new Error("Could not generate public URL");
-      }
-
-      console.log("Generated public URL:", publicUrl);
-
-      // Pass the complete public URL to onUpload
+      if (!publicUrl) throw new Error("Could not generate public URL");
       onUpload(publicUrl);
     } catch (error) {
-      if (error instanceof Error) {
-        console.error("Error uploading avatar:", error.message);
-      } else {
-        console.error("Unknown error during avatar upload:", error);
-      }
+      console.error("Error uploading avatar:", error);
     } finally {
       setUploading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bgColor }]}>
       <View style={styles.avatarWrapper}>
-        <TouchableOpacity onPress={uploadAvatar} disabled={uploading}>
+        <TouchableOpacity
+          onPress={uploadAvatar}
+          disabled={uploading}
+          activeOpacity={0.8}
+        >
           <View
             style={[
               styles.avatarBox,
               {
-                borderColor: themeColors.borderColor,
-                backgroundColor: themeColors.avatarBgColor,
+                borderColor: colors.accentColor,
+                backgroundColor: colors.cardBgColor,
                 ...avatarSize,
+                shadowColor: colors.cardShadowColor,
               },
             ]}
           >
@@ -141,67 +93,76 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
               <RNImage
                 source={{ uri: avatarUrl }}
                 style={[avatarSize, styles.image]}
+                resizeMode="cover"
               />
             ) : (
               <View style={[avatarSize, styles.placeholder]}>
                 <Ionicons
                   name="person"
                   size={size * 0.5}
-                  color={themeColors.placeholderIconColor}
+                  color={colors.emptyStateIconColor}
                 />
               </View>
             )}
 
-            {/* Uploading overlay */}
+            {/* Enhanced loading animation without dots */}
             {uploading && (
-              <View
+              <Animatable.View
+                animation="pulse"
+                iterationCount="infinite"
                 style={[
                   styles.uploadingOverlay,
-                  { backgroundColor: themeColors.uploadingOverlayColor },
+                  { backgroundColor: colors.overlayBgColor },
                 ]}
               >
-                {/* Simple spinner replacement */}
-                <Ionicons
-                  name="refresh"
-                  size={size * 0.3}
-                  color={themeColors.textColor}
-                  style={styles.spinner}
+                <Animatable.View
+                  animation="rotate"
+                  iterationCount="infinite"
+                  duration={1000}
+                  style={[styles.spinner, { borderColor: colors.accentColor }]}
                 />
-              </View>
+              </Animatable.View>
             )}
           </View>
         </TouchableOpacity>
 
-        {/* Camera icon */}
-        <View
+        <TouchableOpacity
+          onPress={uploadAvatar}
+          disabled={uploading}
           style={[
             styles.cameraIconContainer,
             {
-              backgroundColor: themeColors.cameraIconBgColor,
-              borderColor: themeColors.borderColor,
+              backgroundColor: colors.buttonBgColor,
+              borderColor: colors.accentColor,
             },
           ]}
         >
-          <TouchableOpacity onPress={uploadAvatar} disabled={uploading}>
-            <Ionicons
-              name="camera"
-              size={size * 0.15}
-              color={themeColors.cameraIconColor}
-            />
-          </TouchableOpacity>
-        </View>
+          <Ionicons
+            name="camera"
+            size={size * 0.15}
+            color={colors.buttonTextColor}
+          />
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         onPress={uploadAvatar}
         disabled={uploading}
-        style={styles.textButton}
+        style={[
+          styles.textButton,
+          {
+            backgroundColor: colors.buttonBgColor,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+          },
+        ]}
       >
         <Text
           style={[
             styles.uploadText,
             {
-              color: themeColors.textColor,
+              color: colors.buttonTextColor,
               opacity: uploading ? 0.6 : 1,
             },
           ]}
@@ -220,18 +181,23 @@ export default function Avatar({ url, size = 150, onUpload }: Props) {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
   },
   avatarWrapper: {
     position: "relative",
+    marginBottom: 12,
   },
   avatarBox: {
     borderRadius: 999,
-    borderWidth: 2,
+    borderWidth: 3,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
   },
-  image: {
-    objectFit: "cover",
-  },
+  image: {},
   placeholder: {
     justifyContent: "center",
     alignItems: "center",
@@ -246,27 +212,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   spinner: {
-    transform: [{ rotate: "45deg" }],
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 4,
+    borderTopColor: "transparent",
   },
   cameraIconContainer: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: 4,
+    right: 4,
     borderRadius: 999,
-    padding: 8,
-    borderWidth: 1,
-    shadowColor: "#000",
+    padding: 6,
+    borderWidth: 2,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 3,
-    transform: [{ translateX: -5 }, { translateY: -1 }],
   },
   textButton: {
-    marginTop: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   uploadText: {
-    fontWeight: "500",
+    fontWeight: "600",
     fontSize: 14,
+    textAlign: "center",
   },
 });

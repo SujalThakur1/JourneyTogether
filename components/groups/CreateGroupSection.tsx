@@ -9,11 +9,14 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useGroups } from "../../contexts/GroupsContext";
+import { useColors } from "../../contexts/ColorContext"; // Import the color context
 import GroupTypeSelector from "./GroupTypeSelector";
 import UserSearchInput from "./UserSearchInput";
 import SelectedLeaderDisplay from "./SelectedLeaderDisplay";
 import GroupMembersList from "./GroupMembersList";
-import DestinationSearchInput from "./DestinationSearchInput";
+import DestinationManager from "./DestinationManager";
+import MapView, { Marker } from "react-native-maps";
+import { checkAndRequestLocationPermission } from "../../lib/locationService";
 
 // Define error type
 interface FormErrors {
@@ -46,19 +49,16 @@ const CreateGroupSection = () => {
     setShowFriendSuggestions,
     filteredLeaders,
     filteredFriends,
-    isDark,
-    textColor,
-    inputTextColor,
-    inputBorderColor,
-    focusedBorderColor,
-    buttonBgColor,
-    buttonTextColor,
-    buttonPressedBgColor,
     handleCreateGroup,
     selectLeader,
     addMember,
     removeMember,
+    destinationCoordinates,
+    setDestinationId,
   } = useGroups();
+
+  // Get colors from context
+  const colors = useColors();
 
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -97,7 +97,30 @@ const CreateGroupSection = () => {
     try {
       setIsLoading(true);
       setErrors({});
-      await handleCreateGroup();
+
+      // Check location permission before creating group
+      const hasLocationPermission = await checkAndRequestLocationPermission(
+        // Success callback
+        async () => {
+          await handleCreateGroup();
+          setIsLoading(false);
+        },
+        // Cancel callback
+        () => {
+          setIsLoading(false);
+          setErrors({
+            groupName: "Location permission is required to create a group",
+          });
+        }
+      );
+
+      // If permission check is handling the flow, we don't need to continue
+      if (hasLocationPermission) {
+        // The success callback will handle this case
+        return;
+      }
+
+      setIsLoading(false);
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -109,53 +132,50 @@ const CreateGroupSection = () => {
   };
 
   return (
-    <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: isDark ? "#1a1a1a" : "#fff" },
-      ]}
-    >
+    <ScrollView style={[styles.container, { backgroundColor: colors.bgColor }]}>
       <View style={styles.headerContainer}>
-        <Text style={[styles.header, { color: textColor }]}>
+        <Text style={[styles.header, { color: colors.textColor }]}>
           Create New Group
         </Text>
       </View>
 
       {/* Group Name Input */}
       <View style={styles.formSection}>
-        <Text style={[styles.label, { color: textColor }]}>Group Name</Text>
+        <Text style={[styles.label, { color: colors.textColor }]}>
+          Group Name
+        </Text>
         <TextInput
           style={[
             styles.input,
             {
-              backgroundColor: isDark ? "#27272a" : "white",
+              backgroundColor: colors.cardBgColor,
               borderColor:
                 focusedInput === "groupName"
-                  ? focusedBorderColor
+                  ? colors.focusedBorderColor
                   : errors.groupName
-                  ? "red"
-                  : inputBorderColor,
-              color: inputTextColor,
+                  ? colors.dangerColor
+                  : colors.inputBorderColor,
+              color: colors.inputTextColor,
             },
           ]}
           placeholder="Enter group name"
-          placeholderTextColor="gray"
+          placeholderTextColor={colors.mutedTextColor}
           value={groupName}
           onChangeText={(text) => {
             setGroupName(text);
             if (errors.groupName)
               setErrors({ ...errors, groupName: undefined });
           }}
-          selectionColor={inputTextColor}
+          selectionColor={colors.accentColor}
           onFocus={() => setFocusedInput("groupName")}
           onBlur={() => setFocusedInput(null)}
         />
         {errors.groupName ? (
-          <Text style={styles.errorText}>{errors.groupName}</Text>
+          <Text style={[styles.errorText, { color: colors.dangerColor }]}>
+            {errors.groupName}
+          </Text>
         ) : (
-          <Text
-            style={[styles.helperText, { color: isDark ? "#9ca3af" : "#666" }]}
-          >
+          <Text style={[styles.helperText, { color: colors.subTextColor }]}>
             Choose a name for your group
           </Text>
         )}
@@ -170,14 +190,51 @@ const CreateGroupSection = () => {
       <View style={styles.formSection}>
         {groupType === "destination" ? (
           <View>
-            <DestinationSearchInput placeholder="Search for a destination" />
+            <DestinationManager
+              onDestinationSelect={(id) => {
+                console.log("Selected destination ID:", id);
+                setDestinationId(id);
+              }}
+            />
             {errors.destination && (
-              <Text style={styles.errorText}>{errors.destination}</Text>
+              <Text style={[styles.errorText, { color: colors.dangerColor }]}>
+                {errors.destination}
+              </Text>
+            )}
+
+            {/* Map to display selected destination */}
+            {destinationCoordinates && (
+              <View style={styles.mapContainer}>
+                <MapView
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: destinationCoordinates.latitude,
+                    longitude: destinationCoordinates.longitude,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                  }}
+                  region={{
+                    latitude: destinationCoordinates.latitude,
+                    longitude: destinationCoordinates.longitude,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                  }}
+                >
+                  <Marker
+                    coordinate={{
+                      latitude: destinationCoordinates.latitude,
+                      longitude: destinationCoordinates.longitude,
+                    }}
+                    title={destination}
+                    pinColor={colors.accentColor}
+                  />
+                </MapView>
+              </View>
             )}
           </View>
         ) : groupType ? (
           <View>
-            <Text style={[styles.label, { color: textColor }]}>
+            <Text style={[styles.label, { color: colors.textColor }]}>
               Group Leader
             </Text>
             <UserSearchInput
@@ -200,7 +257,9 @@ const CreateGroupSection = () => {
               />
             )}
             {errors.leader && (
-              <Text style={styles.errorText}>{errors.leader}</Text>
+              <Text style={[styles.errorText, { color: colors.dangerColor }]}>
+                {errors.leader}
+              </Text>
             )}
           </View>
         ) : null}
@@ -208,7 +267,9 @@ const CreateGroupSection = () => {
 
       {/* Group Members Section */}
       <View style={styles.formSection}>
-        <Text style={[styles.label, { color: textColor }]}>Group Members</Text>
+        <Text style={[styles.label, { color: colors.textColor }]}>
+          Group Members
+        </Text>
         <UserSearchInput
           placeholder="Search friends to add"
           searchValue={searchFriend}
@@ -227,20 +288,27 @@ const CreateGroupSection = () => {
           onRemoveMember={removeMember}
         />
         {errors.members && (
-          <Text style={styles.errorText}>{errors.members}</Text>
+          <Text style={[styles.errorText, { color: colors.dangerColor }]}>
+            {errors.members}
+          </Text>
         )}
       </View>
 
       <TouchableOpacity
         style={[
           styles.button,
-          { backgroundColor: isLoading ? "#gray" : buttonBgColor },
+          {
+            backgroundColor: isLoading
+              ? colors.pressedBgColor
+              : colors.buttonBgColor,
+          },
         ]}
         onPress={handleCreateWithFeedback}
         disabled={isLoading}
+        activeOpacity={0.7}
       >
         {isLoading ? (
-          <Text style={[styles.buttonText, { color: buttonTextColor }]}>
+          <Text style={[styles.buttonText, { color: colors.buttonTextColor }]}>
             Creating...
           </Text>
         ) : (
@@ -248,10 +316,12 @@ const CreateGroupSection = () => {
             <MaterialIcons
               name="group-add"
               size={20}
-              color={buttonTextColor}
+              color={colors.buttonTextColor}
               style={styles.buttonIcon}
             />
-            <Text style={[styles.buttonText, { color: buttonTextColor }]}>
+            <Text
+              style={[styles.buttonText, { color: colors.buttonTextColor }]}
+            >
               Create Group
             </Text>
           </>
@@ -288,7 +358,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   errorText: {
-    color: "red",
     fontSize: 12,
     marginTop: 4,
   },
@@ -310,6 +379,13 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 8,
+  },
+  mapContainer: {
+    height: 200,
+    marginTop: 16,
+  },
+  map: {
+    flex: 1,
   },
 });
 

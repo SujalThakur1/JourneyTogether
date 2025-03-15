@@ -8,8 +8,9 @@ import {
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { Session } from "@supabase/supabase-js";
-import { useColorModeContext } from "../../contexts/ColorModeContext";
+import { useColors } from "../../contexts/ColorContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   TextInput as PaperTextInput,
   Button,
@@ -24,8 +25,11 @@ import Avatar from "../../components/Avatar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useApp } from "../../contexts/AppContext";
-import { requestLocationPermission } from "../../lib/locationService";
-import Toast from "react-native-toast-message"; // Toast replacement
+import {
+  requestLocationPermission,
+  checkAndRequestLocationPermission,
+} from "../../lib/locationService";
+import Toast from "react-native-toast-message";
 
 export default function Account() {
   const router = useRouter();
@@ -42,75 +46,60 @@ export default function Account() {
   const [session, setSession] = useState<Session | null>(null);
   const { userUpdated, setUserUpdated } = useApp();
   const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+  const colors = useColors();
 
-  // Theme colors using useColorModeContext
-  const { effectiveColorMode } = useColorModeContext();
-  const isDark = effectiveColorMode === "dark";
-  const themeColors = {
-    bgColor: isDark ? "#1F2937" : "white",
-    cardBgColor: isDark ? "#374151" : "white",
-    primaryColor: isDark ? "#FFFFFF" : "#000000",
-    textColor: isDark ? "#F9FAFB" : "#000000",
-    labelColor: isDark ? "#F9FAFB" : "#000000",
-    inputBorderColor: isDark ? "#6B7280" : "#000000",
-    errorColor: "#EF4444",
-    subTextColor: isDark ? "#9CA3AF" : "#6B7280",
-  };
-
-  // Get session on component mount
+  // Combined session handling into single useEffect
   useEffect(() => {
-    const getSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error);
-        return;
+    let subscription: any;
+    const initializeSession = async () => {
+      const { data: sessionData, error } = await supabase.auth.getSession();
+      if (!error && sessionData.session) {
+        setSession(sessionData.session);
       }
-      setSession(data.session);
+
+      const { data: authData } = supabase.auth.onAuthStateChange(
+        (_event, newSession) => {
+          setSession(newSession);
+        }
+      );
+      subscription = authData.subscription;
     };
 
-    getSession();
-
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => {
-      data.subscription.unsubscribe();
-    };
+    initializeSession();
+    return () => subscription?.unsubscribe();
   }, []);
 
   useEffect(() => {
     if (session) getProfile();
   }, [session]);
 
-  // Handle input focusing and scrolling
   useEffect(() => {
-    if (focusedInput) {
-      setShowDatePicker(false);
+    if (focusedInput && !showDatePicker) {
+      const scrollPositions = {
+        username: 150,
+        bio: 600,
+      };
       setTimeout(() => {
-        if (focusedInput === "username") {
-          scrollViewRef.current?.scrollToPosition(0, 150, true);
-        } else if (focusedInput === "bio") {
-          scrollViewRef.current?.scrollToPosition(0, 600, true);
-        }
+        scrollViewRef.current?.scrollToPosition(
+          0,
+          scrollPositions[focusedInput as keyof typeof scrollPositions] || 0,
+          true
+        );
       }, 100);
     }
   }, [focusedInput]);
 
-  async function getProfile() {
+  const getProfile = async () => {
+    if (!session?.user) return;
     try {
       setLoading(true);
-      if (!session?.user) throw new Error("No user on the session!");
-
       const { data, error, status } = await supabase
         .from("users")
         .select(`username, date_of_birth, gender, bio, avatar_url`)
-        .eq("id", session?.user.id)
+        .eq("id", session.user.id)
         .single();
 
-      if (error && status !== 406) {
-        throw error;
-      }
+      if (error && status !== 406) throw error;
 
       if (data) {
         setUsername(data.username || "");
@@ -120,13 +109,12 @@ export default function Account() {
         setAvatarUrl(data.avatar_url || "");
       }
     } catch (error) {
-      if (error instanceof Error) {
-        alert(error.message);
-      }
+      console.error("Profile fetch error:", error);
+      alert(error instanceof Error ? error.message : "Failed to fetch profile");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   const updateProfile = async () => {
     try {
@@ -138,10 +126,8 @@ export default function Account() {
       if (!dateOfBirth) newErrors.dateOfBirth = "Date of Birth is required";
       if (!gender) newErrors.gender = "Gender is required";
 
-      if (Object.keys(newErrors).length > 0) {
+      if (Object.keys(newErrors).length) {
         setErrors(newErrors);
-        setSaving(false);
-        setLoading(false);
         return;
       }
 
@@ -155,8 +141,6 @@ export default function Account() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log("Attempting to update profile with:", updates);
-
       const { error: updateError, data } = await supabase
         .from("users")
         .update(updates)
@@ -164,32 +148,15 @@ export default function Account() {
         .select()
         .single();
 
-      if (updateError) {
-        console.error("Error updating profile:", updateError);
-        throw new Error(updateError.message || "Failed to update profile");
-      }
+      if (updateError) throw updateError;
 
-      console.log("Profile updated successfully:", data);
       setUserUpdated(true);
-
-      const granted = await requestLocationPermission();
-      Toast.show({
-        type: granted ? "success" : "error",
-        text1: granted ? "Location Access Granted" : "Location Access Denied",
-        text2: granted
-          ? "Location services are now enabled"
-          : "Some features may be limited",
-        position: "top",
-        visibilityTime: 3000,
-      });
-
+      await handleLocationPermission();
       router.replace("/(tabs)");
     } catch (error) {
-      console.error("Caught error:", error);
+      console.error("Profile update error:", error);
       alert(
-        error instanceof Error
-          ? error.message
-          : "An error occurred while updating your profile"
+        error instanceof Error ? error.message : "Failed to update profile"
       );
     } finally {
       setSaving(false);
@@ -197,129 +164,125 @@ export default function Account() {
     }
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (_event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date(dateOfBirth || new Date());
-    setShowDatePicker(Platform.OS === "ios");
-    if (selectedDate) {
-      setDateOfBirth(currentDate.toISOString().split("T")[0]);
-      if (errors.dateOfBirth) setErrors({ ...errors, dateOfBirth: "" });
+    const formattedDate = currentDate.toISOString().split("T")[0];
+
+    setDateOfBirth(formattedDate);
+
+    // Add 0.5 second delay before hiding the date picker
+    setTimeout(() => {
+      setShowDatePicker(false);
+    }, 500);
+
+    if (errors.dateOfBirth) {
+      setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
     }
   };
 
   const updateProfileWithAvatar = async (avatarUrl: string) => {
+    if (!session?.user) return;
     try {
-      if (!session?.user) throw new Error("No user on the session!");
-
-      console.log("Updating avatar with URL:", avatarUrl);
-
       const updates = {
         avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       };
 
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from("users")
         .update(updates)
-        .eq("id", session.user.id)
-        .select()
-        .single();
+        .eq("id", session.user.id);
 
-      if (error) {
-        throw error;
-      }
-
-      console.log("Profile updated with new avatar:", data);
+      if (error) throw error;
       setAvatarUrl(avatarUrl);
     } catch (error) {
-      console.error("Error updating avatar:", error);
+      console.error("Avatar update error:", error);
       alert(error instanceof Error ? error.message : "Error updating avatar");
     }
   };
 
   const handleLocationPermission = async () => {
-    const granted = await requestLocationPermission();
-    Toast.show({
-      type: granted ? "success" : "error",
-      text1: granted ? "Location Access Granted" : "Location Access Denied",
-      text2: granted
-        ? "Location services are now enabled"
-        : "Some features may be limited",
-      position: "top",
-      visibilityTime: 3000,
-    });
+    const granted = await checkAndRequestLocationPermission(
+      // Success callback
+      () => {
+        Toast.show({
+          type: "success",
+          text1: "Location Access Granted",
+          text2: "Location services enabled",
+          position: "top",
+          visibilityTime: 3000,
+        });
+      },
+      // Cancel callback
+      () => {
+        Toast.show({
+          type: "error",
+          text1: "Location Access Denied",
+          text2: "Some features limited",
+          position: "top",
+          visibilityTime: 3000,
+        });
+      }
+    );
+
+    return granted;
+  };
+
+  const formatDate = (dateString: string) =>
+    dateString
+      ? new Date(dateString).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "Select Date of Birth";
+
+  const handleGenderChange = (value: string) => {
+    setGender(value);
+    setShowDatePicker(false);
+    if (errors.gender) setErrors((prev) => ({ ...prev, gender: "" }));
+  };
+
+  const handleInputFocus = (inputName: string) => {
+    setShowDatePicker(false);
+    setFocusedInput(inputName);
   };
 
   if (loading) {
     return (
       <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: themeColors.bgColor },
-        ]}
+        style={[styles.loadingContainer, { backgroundColor: colors.bgColor }]}
       >
-        <ActivityIndicator size="large" color={themeColors.primaryColor} />
-        <Text style={[styles.loadingText, { color: themeColors.textColor }]}>
+        <ActivityIndicator size="large" color={colors.accentColor} />
+        <Text style={[styles.loadingText, { color: colors.textColor }]}>
           Loading profile...
         </Text>
       </View>
     );
   }
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Select Date of Birth";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const handleGenderChange = (value: string) => {
-    setShowDatePicker(false);
-    setGender(value);
-    if (errors.gender) setErrors({ ...errors, gender: "" });
-  };
-
-  const handleInputFocus = (inputName: string) => {
-    setShowDatePicker(false);
-    setFocusedInput(inputName);
-    if (Platform.OS === "ios") {
-      setTimeout(() => {
-        if (inputName === "username") {
-          scrollViewRef.current?.scrollToPosition(0, 150, true);
-        } else if (inputName === "bio") {
-          scrollViewRef.current?.scrollToPosition(0, 400, true);
-        }
-      }, 100);
-    }
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.bgColor }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
       <KeyboardAwareScrollView
         ref={scrollViewRef}
-        enableOnAndroid={true}
-        enableAutomaticScroll={true}
+        enableOnAndroid
         extraScrollHeight={-60}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
-        enableResetScrollToCoords={false}
       >
         <Surface
           style={[
             styles.headerContainer,
-            { backgroundColor: themeColors.bgColor },
+            { backgroundColor: colors.cardBgColor },
           ]}
-          elevation={0}
         >
-          <Headline style={[styles.title, { color: themeColors.textColor }]}>
+          <Headline style={[styles.title, { color: colors.textColor }]}>
             Your Profile
           </Headline>
-          <Paragraph
-            style={[styles.subtitle, { color: themeColors.labelColor }]}
-          >
+          <Paragraph style={[styles.subtitle, { color: colors.subTextColor }]}>
             Complete your profile to personalize your experience
           </Paragraph>
         </Surface>
@@ -328,41 +291,41 @@ export default function Account() {
           <Avatar
             size={120}
             url={avatarUrl}
-            onUpload={(url: string) => {
-              console.log("Received new avatar URL:", url);
-              setShowDatePicker(false);
-              updateProfileWithAvatar(url);
-            }}
+            onUpload={(url: string) => updateProfileWithAvatar(url)}
           />
         </View>
 
         <Surface
           style={[
             styles.formContainer,
-            { backgroundColor: themeColors.cardBgColor },
+            {
+              backgroundColor: colors.cardBgColor,
+              shadowColor: colors.cardShadowColor,
+              borderColor: colors.cardBorderColor,
+            },
           ]}
-          elevation={1}
         >
-          {/* Username */}
           <View style={styles.formControl}>
-            <Text style={[styles.label, { color: themeColors.labelColor }]}>
+            <Text style={[styles.label, { color: colors.textColor }]}>
               Username
             </Text>
             <PaperTextInput
               value={username}
               onChangeText={(text) => {
                 setUsername(text);
-                if (errors.username) setErrors({ ...errors, username: "" });
+                if (errors.username)
+                  setErrors((prev) => ({ ...prev, username: "" }));
               }}
               mode="outlined"
               placeholder="Enter your name"
               style={[styles.usernameInput, { backgroundColor: "transparent" }]}
-              textColor={themeColors.textColor}
+              textColor={colors.inputTextColor}
               theme={{
                 colors: {
-                  primary: themeColors.primaryColor,
-                  placeholder: themeColors.subTextColor,
-                  error: themeColors.errorColor,
+                  primary: colors.focusedBorderColor,
+                  placeholder: colors.mutedTextColor,
+                  error: colors.dangerColor,
+                  outline: colors.inputBorderColor,
                 },
               }}
               error={!!errors.username}
@@ -370,39 +333,34 @@ export default function Account() {
               onBlur={() => setFocusedInput(null)}
             />
             {errors.username && (
-              <Text
-                style={[styles.errorText, { color: themeColors.errorColor }]}
-              >
+              <Text style={[styles.errorText, { color: colors.dangerColor }]}>
                 {errors.username}
               </Text>
             )}
           </View>
 
-          {/* Date of Birth */}
           <View style={styles.formControl}>
-            <Text style={[styles.label, { color: themeColors.labelColor }]}>
+            <Text style={[styles.label, { color: colors.textColor }]}>
               Date of Birth
             </Text>
             <TouchableOpacity
               onPress={() => setShowDatePicker(true)}
               style={[
                 styles.dateInput,
-                { borderColor: themeColors.inputBorderColor },
+                { borderColor: colors.inputBorderColor },
               ]}
             >
-              <RNText style={{ color: themeColors.textColor }}>
+              <RNText style={{ color: colors.textColor }}>
                 {formatDate(dateOfBirth)}
               </RNText>
               <MaterialIcons
                 name="calendar-today"
                 size={20}
-                color={themeColors.labelColor}
+                color={colors.iconColor}
               />
             </TouchableOpacity>
             {errors.dateOfBirth && (
-              <Text
-                style={[styles.errorText, { color: themeColors.errorColor }]}
-              >
+              <Text style={[styles.errorText, { color: colors.dangerColor }]}>
                 {errors.dateOfBirth}
               </Text>
             )}
@@ -418,9 +376,8 @@ export default function Account() {
             />
           )}
 
-          {/* Gender */}
           <View style={styles.formControl}>
-            <Text style={[styles.label, { color: themeColors.labelColor }]}>
+            <Text style={[styles.label, { color: colors.textColor }]}>
               Gender
             </Text>
             <View style={styles.radioGroup}>
@@ -434,10 +391,10 @@ export default function Account() {
                     style={[
                       styles.radioCircle,
                       {
-                        borderColor: themeColors.primaryColor,
+                        borderColor: colors.accentColor,
                         backgroundColor:
                           gender === option
-                            ? themeColors.primaryColor
+                            ? colors.accentColor
                             : "transparent",
                       },
                     ]}
@@ -447,7 +404,7 @@ export default function Account() {
                     )}
                   </View>
                   <RNText
-                    style={[styles.radioText, { color: themeColors.textColor }]}
+                    style={[styles.radioText, { color: colors.textColor }]}
                   >
                     {option.charAt(0).toUpperCase() + option.slice(1)}
                   </RNText>
@@ -455,29 +412,25 @@ export default function Account() {
               ))}
             </View>
             {errors.gender && (
-              <Text
-                style={[styles.errorText, { color: themeColors.errorColor }]}
-              >
+              <Text style={[styles.errorText, { color: colors.dangerColor }]}>
                 {errors.gender}
               </Text>
             )}
           </View>
 
-          {/* Bio */}
           <View style={styles.formControl}>
-            <Text style={[styles.label, { color: themeColors.labelColor }]}>
-              Bio
-            </Text>
+            <Text style={[styles.label, { color: colors.textColor }]}>Bio</Text>
             <PaperTextInput
               value={bio}
               onChangeText={setBio}
               mode="outlined"
               style={[styles.bioInput, { backgroundColor: "transparent" }]}
-              textColor={themeColors.textColor}
+              textColor={colors.inputTextColor}
               theme={{
                 colors: {
-                  primary: themeColors.primaryColor,
-                  placeholder: themeColors.subTextColor,
+                  primary: colors.focusedBorderColor,
+                  placeholder: colors.mutedTextColor,
+                  outline: colors.inputBorderColor,
                 },
               }}
               multiline
@@ -487,8 +440,8 @@ export default function Account() {
               onFocus={() => handleInputFocus("bio")}
               onBlur={() => setFocusedInput(null)}
             />
-            <Text style={[styles.charCount, { color: themeColors.labelColor }]}>
-              {bio.length}/250 characters
+            <Text style={[styles.charCount, { color: colors.subTextColor }]}>
+              {bio.length}/250
             </Text>
           </View>
         </Surface>
@@ -498,17 +451,14 @@ export default function Account() {
           onPress={updateProfile}
           loading={saving}
           disabled={saving}
-          style={[styles.button, { backgroundColor: themeColors.primaryColor }]}
-          labelStyle={[
-            styles.buttonLabel,
-            { color: isDark ? "#000000" : "#FFFFFF" },
-          ]}
+          style={[styles.button, { backgroundColor: colors.buttonBgColor }]}
+          labelStyle={[styles.buttonLabel, { color: colors.buttonTextColor }]}
         >
           Save Profile
         </Button>
       </KeyboardAwareScrollView>
       <Toast />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -544,11 +494,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 1,
+    borderWidth: 1,
   },
   formControl: {
     marginBottom: 16,

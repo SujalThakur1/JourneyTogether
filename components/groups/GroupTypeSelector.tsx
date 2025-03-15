@@ -1,13 +1,17 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useGroups } from "../../contexts/GroupsContext";
+import { useColors } from "../../contexts/ColorContext"; // Import the color context
 
 const GroupTypeSelector = () => {
-  const { groupType, textColor, isDark, handleTypeChange } = useGroups();
+  const { groupType, handleTypeChange } = useGroups();
+  const colors = useColors(); // Get colors from context
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: textColor }]}>Group Type</Text>
+      <Text style={[styles.label, { color: colors.textColor }]}>
+        Group Type
+      </Text>
       <View style={styles.radioGroup}>
         <TouchableOpacity
           style={styles.radioItem}
@@ -17,17 +21,15 @@ const GroupTypeSelector = () => {
             style={[
               styles.radioCircle,
               {
-                borderColor: isDark ? "#fff" : "#000",
+                borderColor: colors.accentColor,
                 backgroundColor:
                   groupType === "destination"
-                    ? isDark
-                      ? "#fff"
-                      : "#000"
+                    ? colors.radioButtonColor
                     : "transparent",
               },
             ]}
           />
-          <Text style={[styles.radioText, { color: textColor }]}>
+          <Text style={[styles.radioText, { color: colors.textColor }]}>
             Travel to a destination
           </Text>
         </TouchableOpacity>
@@ -39,17 +41,15 @@ const GroupTypeSelector = () => {
             style={[
               styles.radioCircle,
               {
-                borderColor: isDark ? "#fff" : "#000",
+                borderColor: colors.accentColor,
                 backgroundColor:
                   groupType === "follow"
-                    ? isDark
-                      ? "#fff"
-                      : "#000"
+                    ? colors.radioButtonColor
                     : "transparent",
               },
             ]}
           />
-          <Text style={[styles.radioText, { color: textColor }]}>
+          <Text style={[styles.radioText, { color: colors.textColor }]}>
             Follow a group member
           </Text>
         </TouchableOpacity>

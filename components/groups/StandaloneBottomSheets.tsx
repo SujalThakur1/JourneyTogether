@@ -8,6 +8,7 @@ import {
 import { useColors } from "../../contexts/ColorContext";
 import CreateGroupSection from "./CreateGroupSection";
 import JoinGroupSection from "./JoinGroupSection";
+import MapView, { Marker } from "react-native-maps";
 
 interface StandaloneBottomSheetsProps {
   showCreateSheet: boolean;
@@ -42,7 +43,7 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
                 style={[
                   styles.bottomSheet,
                   {
-                    backgroundColor: colors.bottomSheetBgColor,
+                    backgroundColor: colors.bgColor,
                     borderTopLeftRadius: 15,
                     borderTopRightRadius: 15,
                   },

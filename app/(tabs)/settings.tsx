@@ -20,7 +20,14 @@ import { useColorModeContext } from "../../contexts/ColorModeContext";
 import { useColors } from "../../contexts/ColorContext";
 import Toast from "react-native-toast-message"; // Toast replacement
 import { CACHE_KEYS } from "../../contexts/AppContext";
- 
+import {
+  getCurrentLocation,
+  startLocationTracking as startTracking,
+  stopLocationTracking,
+  UserLocation,
+  checkAndRequestLocationPermission,
+} from "../../lib/locationService";
+
 export default function SettingsScreen() {
   const colors = useColors();
   const { colorMode, toggleColorMode, setColorMode } = useColorModeContext();
@@ -141,7 +148,29 @@ export default function SettingsScreen() {
     if (isTrackingLocation) {
       stopTrackingLocation();
     } else {
-      await startTrackingLocation();
+      // Check location permission before starting tracking
+      await checkAndRequestLocationPermission(
+        // Success callback
+        async () => {
+          await startTrackingLocation();
+        }
+      );
+    }
+  };
+
+  // Update the setLocationServices function to handle location permission
+  const handleLocationServicesToggle = async (value: boolean) => {
+    if (value) {
+      // If turning on, check and request permission
+      await checkAndRequestLocationPermission(
+        // Success callback
+        () => {
+          setLocationServices(true);
+        }
+      );
+    } else {
+      // If turning off, just update the state
+      setLocationServices(false);
     }
   };
 
@@ -352,7 +381,7 @@ export default function SettingsScreen() {
                 </View>
                 <RNSwitch
                   value={locationServices}
-                  onValueChange={setLocationServices}
+                  onValueChange={handleLocationServicesToggle}
                   trackColor={{
                     false: colors.switchTrackColor,
                     true: colors.accentColor,

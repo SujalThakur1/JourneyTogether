@@ -14,6 +14,7 @@ import EmailInput from "../../components/EmailInput";
 import PasswordInput from "../../components/PasswordInput";
 import { useRouter } from "expo-router";
 import { useApp } from "../../contexts/AppContext";
+import { requestLocationPermission } from "../../lib/locationService";
 
 const SignInSchema = Yup.object().shape({
   email: Yup.string()
@@ -48,15 +49,24 @@ export default function SignIn() {
             password: "Invalid email or password",
           });
         } else {
-          setErrors({
-            email: error.message,
-          });
+          setErrors({ email: error.message });
         }
-      } else {
-        setUserUpdated(true);
+        return;
       }
+
+      // Request location permission after successful sign-in
+      requestLocationPermission();
+
+      // Update user state
+      setUserUpdated(true);
+
+      // Navigate to the main app
+      router.replace("/(tabs)");
     } catch (error) {
-      console.error("Error during sign in:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      console.error("Sign-in error:", error);
+      setErrors({ email: errorMessage });
     } finally {
       setLoading(false);
     }

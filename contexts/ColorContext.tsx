@@ -76,6 +76,9 @@ interface ThemeColors {
 
   // Helper property
   isDark: boolean;
+
+  // Radio button colors
+  radioButtonColor: string;
 }
 
 interface ColorContextType {
@@ -163,6 +166,9 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
 
     // Helper property
     isDark,
+
+    //
+    radioButtonColor: isDark ? "#92400e" : "#fdba74",
   };
 
   return (
