@@ -12,6 +12,7 @@ import {
 import { ColorProvider } from "@/contexts/ColorContext";
 import "react-native-get-random-values";
 import { GroupsProvider } from "../contexts/GroupsContext";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Create a StatusBarComponent that uses the ColorModeContext
 function StatusBarComponent() {
@@ -100,22 +101,24 @@ export default function RootLayout() {
   }, [session, userDetails, segments]);
 
   return (
-    <ColorModeProvider>
-      <ColorProvider>
-        <AppProvider>
-          <GroupsProvider>
-            <StatusBarComponent />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(onboarding)"
-                options={{ headerShown: false }}
-              />
-            </Stack>
-          </GroupsProvider>
-        </AppProvider>
-      </ColorProvider>
-    </ColorModeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ColorModeProvider>
+        <ColorProvider>
+          <AppProvider>
+            <GroupsProvider>
+              <StatusBarComponent />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="(onboarding)"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
+            </GroupsProvider>
+          </AppProvider>
+        </ColorProvider>
+      </ColorModeProvider>
+    </GestureHandlerRootView>
   );
 }

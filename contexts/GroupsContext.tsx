@@ -13,6 +13,30 @@ import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
 import { useColors } from "./ColorContext";
 
+// Define Group interface
+export interface Group {
+  group_id: number;
+  group_name: string;
+  group_code: string;
+  group_type: "TravelToDestination" | "FollowMember";
+  destination_id: number | null;
+  leader_id: string;
+  group_members: string[];
+  created_by: string;
+  created_at: string;
+  group_description?: string;
+  destination?: string | null;
+}
+
+// Define interface for creating a new group
+export interface CreateGroupParams {
+  group_name: string;
+  group_description?: string;
+  group_type: "TravelToDestination" | "FollowMember";
+  destination?: string | null;
+  created_by: string;
+}
+
 interface GroupsContextType {
   // (Existing interface remains unchanged)
   groupType: string;
@@ -47,6 +71,11 @@ interface GroupsContextType {
   tabTextColor: string;
   destinationCoordinates: Location | null;
 
+  // New properties for groups list
+  userGroups: Group[];
+  isLoadingGroups: boolean;
+  groupsError: string | null;
+
   setGroupType: (value: string) => void;
   setGroupCode: (value: string) => void;
   setGroupName: (value: string) => void;
@@ -67,6 +96,14 @@ interface GroupsContextType {
   selectLeader: (user: User) => void;
   removeMember: (userId: string) => void;
   getInitials: (name: string) => string;
+
+  // New functions for groups list
+  fetchUserGroups: () => Promise<void>;
+  refreshGroups: () => Promise<void>;
+
+  // Standalone methods for creating and joining groups
+  createGroup: (params: CreateGroupParams) => Promise<Group>;
+  joinGroup: (code: string) => Promise<Group>;
 }
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
@@ -92,6 +129,11 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   const [destinationCoordinates, setDestinationCoordinates] =
     useState<Location | null>(null);
 
+  // New state for groups list
+  const [userGroups, setUserGroups] = useState<Group[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+
   const {
     userDetails,
     userLocation,
@@ -103,6 +145,13 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
   const router = useRouter();
 
   const colors = useColors();
+
+  // Fetch user's groups when userDetails changes
+  useEffect(() => {
+    if (userDetails?.id) {
+      fetchUserGroups();
+    }
+  }, [userDetails]);
 
   // Fetch group members locations (unchanged)
   const fetchGroupMembersLocations = async () => {
@@ -178,6 +227,42 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       .toUpperCase();
   };
 
+  // New function to fetch user's groups
+  const fetchUserGroups = async () => {
+    if (!userDetails?.id) return;
+
+    try {
+      setIsLoadingGroups(true);
+      setGroupsError(null);
+
+      // Fetch groups where user is a member
+      const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .contains("group_members", [userDetails.id])
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching groups:", error);
+        setGroupsError(error.message);
+        setIsLoadingGroups(false);
+        return;
+      }
+
+      setUserGroups(data || []);
+      setIsLoadingGroups(false);
+    } catch (error: any) {
+      console.error("Error in fetchUserGroups:", error);
+      setGroupsError(error.message || "Failed to fetch groups");
+      setIsLoadingGroups(false);
+    }
+  };
+
+  // Function to refresh groups
+  const refreshGroups = async () => {
+    await fetchUserGroups();
+  };
+
   // Action handlers (unchanged)
   const handleJoinGroup = async () => {
     try {
@@ -233,6 +318,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (updateError) {
         throw new Error(updateError.message || "Failed to join group");
       }
+
+      // Refresh groups list
+      await fetchUserGroups();
 
       // Navigate to the group page
       router.push({
@@ -304,6 +392,10 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       console.log("Group created successfully:", data);
       setGroupCode(newGroupCode);
+
+      // Refresh groups list
+      await fetchUserGroups();
+
       router.push({
         pathname: "/group/[code]",
         params: { code: newGroupCode },
@@ -338,6 +430,110 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     setGroupMembers(groupMembers.filter((member) => member.id !== userId));
   };
 
+  // Standalone method to create a group
+  const createGroup = async (params: CreateGroupParams): Promise<Group> => {
+    try {
+      if (!userDetails?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      const newGroupCode = generateGroupCode();
+      const memberIds = [userDetails.id]; // Creator is always a member
+      const leaderId = userDetails.id; // Default leader is the creator
+
+      const { data, error } = await supabase
+        .from("groups")
+        .insert({
+          group_name: params.group_name,
+          group_description: params.group_description || null,
+          group_code: newGroupCode,
+          group_type: params.group_type,
+          destination: params.destination || null,
+          leader_id: leaderId,
+          group_members: memberIds,
+          created_by: params.created_by,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating group:", error);
+        throw new Error(error.message || "Failed to create group");
+      }
+
+      console.log("Group created successfully:", data);
+
+      // Refresh groups list
+      await fetchUserGroups();
+
+      return data;
+    } catch (error) {
+      console.error("Error in createGroup:", error);
+      throw error;
+    }
+  };
+
+  // Standalone method to join a group
+  const joinGroup = async (code: string): Promise<Group> => {
+    try {
+      if (!userDetails?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      if (!code || code.trim().length !== 6) {
+        throw new Error("Invalid group code");
+      }
+
+      // Check if the group exists
+      const { data: groupData, error: groupError } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("group_code", code.toUpperCase())
+        .single();
+
+      if (groupError) {
+        if (groupError.code === "PGRST116") {
+          throw new Error(
+            "Group not found. Please check the code and try again."
+          );
+        }
+        throw new Error(groupError.message);
+      }
+
+      if (!groupData) {
+        throw new Error(
+          "Group not found. Please check the code and try again."
+        );
+      }
+
+      // Check if user is already a member
+      if (groupData.group_members.includes(userDetails.id)) {
+        return groupData; // User is already a member
+      }
+
+      // Add user to the group members
+      const updatedMembers = [...groupData.group_members, userDetails.id];
+
+      // Update the group with the new member
+      const { error: updateError } = await supabase
+        .from("groups")
+        .update({ group_members: updatedMembers })
+        .eq("group_id", groupData.group_id);
+
+      if (updateError) {
+        throw new Error(updateError.message || "Failed to join group");
+      }
+
+      // Refresh groups list
+      await fetchUserGroups();
+
+      return { ...groupData, group_members: updatedMembers };
+    } catch (error: any) {
+      console.error("Error joining group:", error);
+      throw error;
+    }
+  };
+
   const value: GroupsContextType = {
     groupType,
     groupCode,
@@ -368,6 +564,10 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     activeTabBorderColor: colors.activeTabBorderColor,
     tabTextColor: colors.tabTextColor,
     destinationCoordinates,
+    // New properties
+    userGroups,
+    isLoadingGroups,
+    groupsError,
     setGroupType,
     setGroupCode,
     setGroupName,
@@ -387,6 +587,12 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     selectLeader,
     removeMember,
     getInitials,
+    // New functions
+    fetchUserGroups,
+    refreshGroups,
+    // Standalone methods
+    createGroup,
+    joinGroup,
   };
 
   return (
