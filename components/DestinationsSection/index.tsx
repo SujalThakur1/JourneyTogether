@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useApp } from "../../contexts/AppContext";
 import { useColors } from "../../contexts/ColorContext";
+import { useRouter } from "expo-router";
 
 // Function to create styles using colors from context
 export const createStyles = (colors: any) =>
@@ -81,7 +82,13 @@ export const createStyles = (colors: any) =>
 export const DestinationsSection = () => {
   const { destinations, isLoading } = useApp();
   const colors = useColors();
+  const router = useRouter();
   const styles = createStyles(colors);
+
+  const handleDestinationPress = (destinationId: number) => {
+    console.log("Destination pressed:", destinationId);
+    router.push(`/destination/${destinationId}`);
+  };
 
   if (isLoading) {
     return (
@@ -102,6 +109,7 @@ export const DestinationsSection = () => {
           <TouchableOpacity
             key={destination.destination_id}
             style={styles.destinationCard}
+            onPress={() => handleDestinationPress(destination.destination_id)}
           >
             <ImageBackground
               source={{

@@ -1,100 +1,90 @@
-// import { useState, useEffect, useRef } from "react";
-// import { supabase } from "@/lib/supabase";
-// import { useDebounce } from "@/hooks/useDebounce";
-// import { Search } from "lucide-react";
+import React, { useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useColors } from "../contexts/ColorContext";
 
-// interface DestinationSearchProps {
-//   onSearch: (query: string) => void;
-// }
+interface DestinationSearchProps {
+  onSearch: (query: string) => void;
+  onClose: () => void;
+  placeholder?: string;
+}
 
-// export default function DestinationSearch({
-//   onSearch,
-// }: DestinationSearchProps) {
-//   const [searchQuery, setSearchQuery] = useState("");
-//   const [suggestions, setSuggestions] = useState<any[]>([]);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const debouncedSearchQuery = useDebounce(searchQuery, 300);
-//   const searchInputRef = useRef<HTMLInputElement>(null);
+const DestinationSearch: React.FC<DestinationSearchProps> = ({
+  onSearch,
+  onClose,
+  placeholder = "Search destinations...",
+}) => {
+  const [searchText, setSearchText] = useState("");
+  const colors = useColors();
 
-//   useEffect(() => {
-//     if (debouncedSearchQuery.length > 2) {
-//       fetchGoogleSuggestions(debouncedSearchQuery);
-//     } else {
-//       setSuggestions([]);
-//     }
-//   }, [debouncedSearchQuery]);
+  const handleSearch = () => {
+    if (searchText.trim()) {
+      onSearch(searchText);
+    }
+  };
 
-//   const fetchGoogleSuggestions = async (query: string) => {
-//     setIsLoading(true);
-//     try {
-//       // Replace with your actual Google Places API endpoint
-//       const response = await fetch(
-//         `/api/places/autocomplete?input=${encodeURIComponent(query)}`
-//       );
-//       const data = await response.json();
-//       console.log("Google API response:", data);
+  return (
+    <View style={styles.container}>
+      <View
+        style={[
+          styles.searchContainer,
+          { backgroundColor: colors.cardBgColor },
+        ]}
+      >
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.textColor} />
+        </TouchableOpacity>
 
-//       if (data.predictions) {
-//         setSuggestions(data.predictions);
-//       }
-//     } catch (error) {
-//       console.error("Error fetching suggestions:", error);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
+        <TextInput
+          style={[styles.input, { color: colors.textColor }]}
+          placeholder={placeholder}
+          placeholderTextColor={colors.mutedTextColor}
+          value={searchText}
+          onChangeText={setSearchText}
+          onSubmitEditing={handleSearch}
+          autoFocus
+          returnKeyType="search"
+        />
 
-//   const handleSearch = () => {
-//     if (searchQuery.trim()) {
-//       onSearch(searchQuery);
-//     }
-//   };
+        <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+          <Ionicons name="search" size={24} color={colors.accentColor} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
-//   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-//     if (e.key === "Enter") {
-//       handleSearch();
-//     }
-//   };
+const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+    padding: 16,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  searchButton: {
+    padding: 8,
+  },
+});
 
-//   const handleSuggestionClick = (suggestion: any) => {
-//     setSearchQuery(suggestion.description);
-//     setSuggestions([]);
-//     onSearch(suggestion.description);
-//   };
-
-//   return (
-//     <div className="relative w-full">
-//       <div className="relative flex items-center">
-//         <input
-//           ref={searchInputRef}
-//           type="text"
-//           value={searchQuery}
-//           onChange={(e) => setSearchQuery(e.target.value)}
-//           onKeyDown={handleKeyDown}
-//           placeholder="Search destinations..."
-//           className="w-full p-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-//         />
-//         <button
-//           onClick={handleSearch}
-//           className="absolute right-2 text-gray-500 hover:text-gray-700"
-//         >
-//           <Search size={20} />
-//         </button>
-//       </div>
-
-//       {suggestions.length > 0 && (
-//         <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
-//           {suggestions.map((suggestion, index) => (
-//             <div
-//               key={index}
-//               className="p-2 hover:bg-gray-100 cursor-pointer"
-//               onClick={() => handleSuggestionClick(suggestion)}
-//             >
-//               {suggestion.description}
-//             </div>
-//           ))}
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
+export default DestinationSearch;

@@ -98,7 +98,6 @@ export default function DiscoverScreen() {
         // If no results from Supabase, try to get from Google Places API
         await searchGooglePlaces(query);
       }
-      
     } catch (error) {
       console.error("Error in searchDestinations:", error);
       setSearchResults([]);

@@ -9,10 +9,16 @@ import {
 } from "react-native";
 import { useApp } from "../../contexts/AppContext";
 import { useColors } from "../../contexts/ColorContext"; // Updated import
+import { useRouter } from "expo-router";
 
 export const TopDestinationsSection = () => {
   const { topDestinations, isLoading } = useApp();
   const colors = useColors(); // Use the color context
+  const router = useRouter();
+
+  const handleDestinationPress = (destinationId: number) => {
+    router.push(`/destination/${destinationId}`);
+  };
 
   if (topDestinations.length === 0) {
     return null;
@@ -42,6 +48,7 @@ export const TopDestinationsSection = () => {
               styles.topDestinationCard,
               { backgroundColor: colors.cardBgColor },
             ]}
+            onPress={() => handleDestinationPress(destination.destination_id)}
           >
             <ImageBackground
               source={{ uri: destination.destinationimages?.[0]?.image_url }}

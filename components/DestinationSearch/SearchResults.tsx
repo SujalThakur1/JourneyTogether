@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useColors } from "../../contexts/ColorContext";
+import { useRouter } from "expo-router";
 
 interface Destination {
   destination_id: number;
@@ -38,6 +39,16 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   isRecommended = false,
 }) => {
   const colors = useColors();
+  const router = useRouter();
+
+  const handleDestinationPress = (destination: Destination) => {
+    if (onDestinationPress) {
+      onDestinationPress(destination);
+    } else {
+      // Navigate to destination detail page
+      router.push(`/destination/${destination.destination_id}`);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -81,7 +92,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           borderColor: colors.borderColor,
         },
       ]}
-      onPress={() => onDestinationPress && onDestinationPress(item)}
+      onPress={() => handleDestinationPress(item)}
     >
       {index === 0 && !isRecommended && (
         <View style={[styles.badge, { backgroundColor: colors.accentColor }]}>
@@ -108,11 +119,8 @@ const SearchResults: React.FC<SearchResultsProps> = ({
           {item.location}
         </Text>
         <View style={styles.ratingContainer}>
-          <Text style={[styles.ratingText, { color: colors.accentColor }]}>
-            ★
-          </Text>
-          <Text style={[styles.ratingValue, { color: colors.textColor }]}>
-            {item.rating.toFixed(1)}
+          <Text style={[styles.ratingText, { color: colors.textColor }]}>
+            <Text style={{ color: colors.accentColor }}>★</Text> {item.rating}
           </Text>
         </View>
       </View>
@@ -207,9 +215,6 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 16,
     marginRight: 4,
-  },
-  ratingValue: {
-    fontSize: 14,
   },
   loadingContainer: {
     padding: 24,
