@@ -102,6 +102,11 @@ interface GroupsContextType {
   createGroup: (params: CreateGroupParams) => Promise<Group>;
   joinGroup: (code: string) => Promise<Group>;
   fetchDestinationDetails: (destinationId: number) => Promise<any>;
+  inviteGroupMember: (
+    groupId: number,
+    userId: string,
+    isLeader?: boolean
+  ) => Promise<boolean>;
 
   resetGroupForms: () => void;
 }
@@ -365,12 +370,34 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         groupType === "follow" && selectedLeader
           ? selectedLeader.id
           : userDetails.id;
-      const memberIds = groupMembers.map((member) => member.id);
 
-      if (!memberIds.includes(userDetails.id)) {
-        memberIds.push(userDetails.id);
+      // Create initial members array (just the creator for now)
+      const initialMembers = [userDetails.id];
+
+      // Create request array to track invitations
+      const requests = [];
+
+      // Add leader to requests if they're not the creator
+      if (leaderId !== userDetails.id) {
+        requests.push({
+          uuid: leaderId,
+          date: new Date().toISOString(),
+          status: "pending",
+        });
       }
 
+      // Add other group members to requests
+      for (const member of groupMembers) {
+        if (member.id !== userDetails.id) {
+          requests.push({
+            uuid: member.id,
+            date: new Date().toISOString(),
+            status: "pending",
+          });
+        }
+      }
+
+      // Insert the group
       const { data, error } = await supabase
         .from("groups")
         .insert({
@@ -379,8 +406,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
           group_type: dbGroupType,
           destination_id: destId,
           leader_id: leaderId,
-          group_members: memberIds,
+          group_members: initialMembers,
           created_by: userDetails.id,
+          request: requests.length > 0 ? requests : null,
         })
         .select()
         .single();
@@ -388,6 +416,12 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) {
         console.error("Error creating group:", error);
         throw new Error(error.message || "Failed to create group");
+      }
+
+      // Send notifications to invited users
+      if (requests.length > 0) {
+        console.log("Sending notifications to invited users");
+        await sendGroupInvitations(data.group_id, requests, leaderId);
       }
 
       console.log("Group created successfully:", data);
@@ -405,6 +439,139 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       return data;
     } catch (error) {
       console.error("Error in handleCreateGroup:", error);
+      throw error;
+    }
+  };
+
+  // New function to send notifications to invited users
+  const sendGroupInvitations = async (
+    groupId: number,
+    requests: any[],
+    leaderId: string
+  ) => {
+    try {
+      for (const request of requests) {
+        // Fetch existing user data
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("notification")
+          .eq("id", request.uuid)
+          .single();
+
+        if (userError) {
+          if (userError.code === "PGRST116") {
+            console.error(`User with id ${request.uuid} not found`);
+            continue;
+          }
+          console.error("Error fetching user:", userError);
+          continue;
+        }
+
+        // Create notification object
+        const notification = {
+          group_id: groupId,
+          date: request.date,
+          is_leader: request.uuid === leaderId,
+        };
+
+        // Handle existing notifications (which comes as an array of jsonb objects)
+        const existingNotifications = Array.isArray(userData?.notification)
+          ? userData.notification
+          : [];
+
+        // Add new notification as a separate jsonb object
+        const updatedNotifications = [...existingNotifications, notification];
+
+        console.log(
+          "Updating notifications for user",
+          request.uuid,
+          "with:",
+          updatedNotifications
+        );
+
+        // Update user with new notifications
+        const { data: updateData, error: updateError } = await supabase
+          .from("users")
+          .update({
+            notification: updatedNotifications,
+          })
+          .eq("id", request.uuid)
+          .select();
+
+        if (updateError) {
+          console.error("Error updating user notifications:", updateError);
+          console.error("Failed for user ID:", request.uuid);
+          console.error(
+            "Error details:",
+            updateError.details,
+            updateError.hint
+          );
+          continue;
+        }
+
+        console.log(
+          `Successfully updated notifications for user ${request.uuid}`,
+          updateData
+        );
+      }
+    } catch (error) {
+      console.error("Error sending group invitations:", error);
+    }
+  };
+
+  // New function to add a member to an existing group
+  const inviteGroupMember = async (
+    groupId: number,
+    userId: string,
+    isLeader: boolean = false
+  ) => {
+    try {
+      if (!userDetails?.id) {
+        throw new Error("User not authenticated");
+      }
+
+      // Get current group data
+      const { data: groupData, error: groupError } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("group_id", groupId)
+        .single();
+
+      if (groupError) throw groupError;
+
+      // Check if user is already a member
+      if (groupData.group_members.includes(userId)) {
+        throw new Error("User is already a member of this group");
+      }
+
+      // Add to request array
+      const currentRequests = groupData.request || [];
+      const newRequest = {
+        uuid: userId,
+        date: new Date().toISOString(),
+        status: "pending",
+      };
+
+      const updatedRequests = [...currentRequests, newRequest];
+
+      // Update group requests
+      const { error: updateError } = await supabase
+        .from("groups")
+        .update({ request: updatedRequests })
+        .eq("group_id", groupId);
+
+      if (updateError) throw updateError;
+
+      // Send notification to user
+      await sendGroupInvitations(
+        groupId,
+        [newRequest],
+        isLeader ? userId : groupData.leader_id
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error inviting group member:", error);
       throw error;
     }
   };
@@ -438,8 +605,15 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const newGroupCode = generateGroupCode();
-      const memberIds = [userDetails.id];
+
+      // Leader is always the creator in this case
       const leaderId = userDetails.id;
+
+      // Just the creator for the initial members
+      const initialMembers = [userDetails.id];
+
+      // No requests/notifications in this simpler version - could add optional members parameter later
+      const requests: { uuid: string; date: string; status: string }[] = [];
 
       const { data, error } = await supabase
         .from("groups")
@@ -450,8 +624,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
           group_type: params.group_type,
           destination: params.destination || null,
           leader_id: leaderId,
-          group_members: memberIds,
+          group_members: initialMembers,
           created_by: params.created_by,
+          request: requests.length > 0 ? requests : null,
         })
         .select()
         .single();
@@ -460,6 +635,9 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Error creating group:", error);
         throw new Error(error.message || "Failed to create group");
       }
+
+      // If this function is extended to allow inviting members at creation time,
+      // add request notification functionality here similar to handleCreateGroup
 
       console.log("Group created successfully:", data);
 
@@ -574,6 +752,8 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     showFriendSuggestions,
     filteredLeaders,
     filteredFriends,
+    destinationCoordinates,
+    destinationId,
     isDark: colors.isDark,
     bgColor: colors.bgColor,
     borderColor: colors.borderColor,
@@ -588,8 +768,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     hoverBgColor: colors.hoverBgColor,
     activeTabBorderColor: colors.activeTabBorderColor,
     tabTextColor: colors.tabTextColor,
-    destinationCoordinates,
-    destinationId,
     userGroups,
     isLoadingGroups,
     groupsError,
@@ -618,6 +796,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     createGroup,
     joinGroup,
     fetchDestinationDetails,
+    inviteGroupMember,
     resetGroupForms,
   };
 

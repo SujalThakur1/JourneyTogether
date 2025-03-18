@@ -61,6 +61,10 @@ interface AppContextType {
   isUsersLoading: boolean;
   usersError: string | null;
   hasAttemptedFetch: boolean;
+  // Notification related properties
+  notificationCount: number;
+  refreshUserDetails: () => Promise<void>;
+  fetchNotificationCount: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -87,6 +91,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isUsersLoading, setIsUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
+  const [notificationCount, setNotificationCount] = useState<number>(0);
 
   // Added state for users
   const [users, setUsers] = useState<any[]>([]); // Holds the list of users
@@ -437,6 +442,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Function to refresh user details
+  const refreshUserDetails = async () => {
+    if (!userDetails?.id) return;
+
+    try {
+      setUserLoading(true);
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userDetails.id)
+        .single();
+
+      if (error) throw error;
+
+      setUserDetails(data);
+      // Update notification count when user details are refreshed
+      if (data?.notification) {
+        setNotificationCount(data.notification.length);
+      } else {
+        setNotificationCount(0);
+      }
+    } catch (error) {
+      console.error("Error refreshing user details:", error);
+    } finally {
+      setUserLoading(false);
+    }
+  };
+
+  // Function to fetch notification count
+  const fetchNotificationCount = async () => {
+    if (!userDetails?.id) {
+      setNotificationCount(0);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("notification")
+        .eq("id", userDetails.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data?.notification) {
+        setNotificationCount(data.notification.length);
+      } else {
+        setNotificationCount(0);
+      }
+    } catch (error) {
+      console.error("Error fetching notification count:", error);
+      setNotificationCount(0);
+    }
+  };
+
+  // Fetch notification count whenever user details changes
+  useEffect(() => {
+    if (userDetails?.id) {
+      fetchNotificationCount();
+    } else {
+      setNotificationCount(0);
+    }
+  }, [userDetails?.id]);
+
   // Updated context value with users and fetchAllUsers
   const value = {
     userDetails,
@@ -464,6 +533,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     hasAttemptedFetch,
     users, // Provide users state to consumers
     fetchAllUsers, // Provide fetchAllUsers function to consumers
+    notificationCount,
+    refreshUserDetails,
+    fetchNotificationCount,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

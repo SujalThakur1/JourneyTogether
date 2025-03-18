@@ -18,6 +18,8 @@ import SearchResults from "../../components/DestinationSearch/SearchResults";
 import { supabase } from "../../lib/supabase";
 import axios from "axios";
 import { useRouter } from "expo-router";
+import NotificationsList from "../../components/Notifications/NotificationsList";
+import NotificationBadge from "../../components/Notifications/NotificationBadge";
 
 interface Destination {
   destination_id: number;
@@ -32,8 +34,14 @@ interface Destination {
 }
 
 export default function DiscoverScreen() {
-  const { categories, isLoading, selectedCategory, setSelectedCategory } =
-    useApp();
+  const {
+    categories,
+    isLoading,
+    selectedCategory,
+    setSelectedCategory,
+    notificationCount,
+    fetchNotificationCount,
+  } = useApp();
   const colors = useColors();
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -42,7 +50,8 @@ export default function DiscoverScreen() {
   const [hasSearched, setHasSearched] = useState(false);
   const router = useRouter();
   const { userDetails, userUpdated, setUserUpdated } = useApp();
-  
+  const [showNotifications, setShowNotifications] = useState(false);
+
   useEffect(() => {
     if (userDetails === null && !userUpdated) {
       setUserUpdated(true);
@@ -197,6 +206,23 @@ export default function DiscoverScreen() {
     searchDestinations(query);
   };
 
+  // Refresh notification count when the screen comes into focus
+  useEffect(() => {
+    fetchNotificationCount();
+  }, []);
+
+  // Handle notification icon press
+  const handleNotificationPress = () => {
+    setShowNotifications(true);
+  };
+
+  // Handle notification modal close
+  const handleNotificationClose = () => {
+    setShowNotifications(false);
+    // Refresh the notification count after interaction
+    fetchNotificationCount();
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.bgColor }]}
@@ -214,12 +240,16 @@ export default function DiscoverScreen() {
               >
                 <Ionicons name="search" size={24} color={colors.iconColor} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleNotificationPress}
+              >
                 <Ionicons
                   name="notifications-outline"
                   size={24}
                   color={colors.iconColor}
                 />
+                <NotificationBadge count={notificationCount} />
               </TouchableOpacity>
             </View>
           </>
@@ -244,6 +274,12 @@ export default function DiscoverScreen() {
           </View>
         )}
       </View>
+
+      {/* Notifications Modal */}
+      <NotificationsList
+        visible={showNotifications}
+        onClose={handleNotificationClose}
+      />
 
       {/* Search Results overlay */}
       {showSearch && hasSearched && (

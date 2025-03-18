@@ -97,7 +97,15 @@ const CreateGroupBottomSheet = ({
       // Make sure the group name in context is synced with local state
       setGroupName(localGroupName);
 
-      // Create the group using the context function
+      // Set destination to be used in the group creation
+      setContextDestination(destinationName);
+      setDestinationId(destinationId);
+
+      // Make sure group type is set to destination
+      setGroupType("destination");
+
+      // Create the group using the context function - this will now handle notifications
+      // for any members that have been added through the addMember function
       await handleCreateGroup();
 
       // Close the bottom sheet

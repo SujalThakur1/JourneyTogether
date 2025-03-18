@@ -9,7 +9,9 @@ import {
   Share,
   Dimensions,
   Platform,
+  Modal,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../../lib/supabase";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useApp } from "../../../contexts/AppContext";
@@ -23,6 +25,9 @@ import {
 import { useColorModeContext } from "../../../contexts/ColorModeContext";
 import DestinationDetails from "../../../components/groups/DestinationDetails";
 import { useGroups } from "../../../contexts/GroupsContext";
+import GroupActions from "../../../components/groups/GroupActions";
+import GroupMembersPanel from "../../../components/groups/GroupMembersPanel";
+import PendingRequestsPanel from "../../../components/groups/PendingRequestsPanel";
 
 // Define types
 interface Group {
@@ -34,6 +39,13 @@ interface Group {
   leader_id: string;
   group_members: string[];
   created_at: string;
+  request?: RequestMember[];
+}
+
+interface RequestMember {
+  uuid: string;
+  date: string;
+  status: "pending" | "accepted" | "rejected";
 }
 
 interface Destination {
@@ -64,6 +76,61 @@ interface Region {
   longitudeDelta: number;
 }
 
+// Component to display group members stats
+const GroupMembersStats = ({
+  group,
+  bgColor,
+  textColor,
+  borderColor,
+}: {
+  group: Group | null;
+  bgColor: string;
+  textColor: string;
+  borderColor: string;
+}) => {
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [acceptedCount, setPendingAccepted] = useState<number>(0);
+
+  useEffect(() => {
+    if (!group) return;
+
+    // Set accepted members count
+    setPendingAccepted(group.group_members.length);
+
+    // Count pending requests
+    if (group.request && group.request.length > 0) {
+      const pendingMembers = group.request.filter(
+        (r) => r.status === "pending"
+      );
+      setPendingCount(pendingMembers.length);
+    } else {
+      setPendingCount(0);
+    }
+  }, [group]);
+
+  if (!group) return null;
+
+  return (
+    <View
+      style={[styles.statsContainer, { backgroundColor: bgColor, borderColor }]}
+    >
+      <View style={styles.statsItem}>
+        <Text style={[styles.statsValue, { color: textColor }]}>
+          {acceptedCount}
+        </Text>
+        <Text style={[styles.statsLabel, { color: textColor }]}>Members</Text>
+      </View>
+      <View style={[styles.divider, { backgroundColor: borderColor }]} />
+      <View style={styles.statsItem}>
+        <Text style={[styles.statsValue, { color: textColor }]}>
+          {pendingCount}
+        </Text>
+        <Text style={[styles.statsLabel, { color: textColor }]}>Pending</Text>
+      </View>
+    </View>
+  );
+};
+
 const GroupMapScreen = () => {
   const { code } = useLocalSearchParams<{ code: string }>();
   const router = useRouter();
@@ -71,7 +138,7 @@ const GroupMapScreen = () => {
   const mapRef = useRef<MapView>(null);
   const { effectiveColorMode } = useColorModeContext();
   const isDark = effectiveColorMode === "dark";
-  const { fetchDestinationDetails, resetGroupForms } = useGroups();
+  const { fetchDestinationDetails, refreshGroups } = useGroups();
 
   // State
   const [group, setGroup] = useState<Group | null>(null);
@@ -84,6 +151,8 @@ const GroupMapScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showMembersList, setShowMembersList] = useState(false);
+  const [showPendingRequests, setShowPendingRequests] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
 
   // Colors
@@ -91,6 +160,7 @@ const GroupMapScreen = () => {
   const textColor = isDark ? "#F3F4F6" : "#1F2937";
   const borderColor = isDark ? "#4B5563" : "#E5E7EB";
   const cardBgColor = isDark ? "#374151" : "#F9FAFB";
+  const buttonColor = isDark ? "#3B82F6" : "#2563EB";
   const mapStyle = isDark
     ? [
         { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -203,6 +273,16 @@ const GroupMapScreen = () => {
 
         setGroup(groupData);
 
+        // Count pending requests
+        if (groupData.request && groupData.request.length > 0) {
+          const pendingRequests = groupData.request.filter(
+            (req: RequestMember) => req.status === "pending"
+          );
+          setPendingCount(pendingRequests.length);
+        } else {
+          setPendingCount(0);
+        }
+
         if (groupData.destination_id) {
           try {
             const destinationData = await fetchDestinationDetails(
@@ -262,6 +342,7 @@ const GroupMapScreen = () => {
 
         setMembersWithLocations(membersWithLoc);
 
+        // Set initial region logic
         const validLocations = membersWithLoc.filter((m) => m.location);
         if (validLocations.length > 0) {
           if (destination) {
@@ -300,34 +381,99 @@ const GroupMapScreen = () => {
     return () => clearInterval(intervalId);
   }, [group, members, userLocation, destination]);
 
-  // Start tracking location
+  // Start tracking location if user is a member
   useEffect(() => {
     if (isUserMember() && userDetails) {
       startTrackingLocation();
     }
   }, [group, userDetails]);
 
-  // Reset group forms when component mounts and unmounts
+  // Set up real-time subscription to group data for notifications and updates
   useEffect(() => {
-    // Reset forms when component mounts
-    resetGroupForms();
+    if (!code) return;
+
+    // Set up real-time subscription for group updates
+    const groupSubscription = supabase
+      .channel(`group-${code}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "groups",
+          filter: `group_code=eq.${code}`,
+        },
+        async (payload) => {
+          console.log("Real-time group update received:", payload);
+
+          // Refresh the group data when changes are detected
+          try {
+            const { data: updatedGroup } = await supabase
+              .from("groups")
+              .select("*")
+              .eq("group_code", code)
+              .single();
+
+            if (updatedGroup) {
+              console.log("Updated group data:", updatedGroup);
+              setGroup(updatedGroup);
+
+              // Update pending count
+              if (updatedGroup.request && updatedGroup.request.length > 0) {
+                const pendingRequests = updatedGroup.request.filter(
+                  (req: RequestMember) => req.status === "pending"
+                );
+                setPendingCount(pendingRequests.length);
+              } else {
+                setPendingCount(0);
+              }
+
+              // If members list changed, refresh member data
+              if (
+                updatedGroup.group_members &&
+                JSON.stringify(updatedGroup.group_members) !==
+                  JSON.stringify(group?.group_members)
+              ) {
+                const { data: membersData } = await supabase
+                  .from("users")
+                  .select("id, username, avatar_url, email")
+                  .in("id", updatedGroup.group_members);
+
+                if (membersData) setMembers(membersData);
+              }
+
+              // If leader changed, refresh leader data
+              if (updatedGroup.leader_id !== group?.leader_id) {
+                const { data: leaderData } = await supabase
+                  .from("users")
+                  .select("id, username, avatar_url, email")
+                  .eq("id", updatedGroup.leader_id)
+                  .single();
+
+                if (leaderData) setLeader(leaderData);
+              }
+            }
+          } catch (error) {
+            console.error("Error refreshing group data:", error);
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
-      // Reset forms when component unmounts
-      resetGroupForms();
+      supabase.removeChannel(groupSubscription);
     };
-  }, []);
+  }, [code, group]);
 
-  // Helper functions
-  const shareGroupCode = async () => {
-    if (!group) return;
-    try {
-      await Share.share({
-        message: `Join my group "${group.group_name}" with code: ${group.group_code}`,
-      });
-    } catch (error) {
-      console.error("Error sharing group code:", error);
-    }
+  // Helper Functions
+  const isUserMember = () => {
+    if (!group || !userDetails) return false;
+    return group.group_members.includes(userDetails.id);
+  };
+
+  const isUserLeader = () => {
+    if (!group || !userDetails) return false;
+    return group.leader_id === userDetails.id;
   };
 
   const getInitials = (name: string) => {
@@ -337,11 +483,6 @@ const GroupMapScreen = () => {
       .map((n) => n[0])
       .join("")
       .toUpperCase();
-  };
-
-  const isUserMember = () => {
-    if (!group || !userDetails) return false;
-    return group.group_members.includes(userDetails.id);
   };
 
   const joinGroup = async () => {
@@ -360,17 +501,9 @@ const GroupMapScreen = () => {
 
           if (error) throw error;
 
-          setGroup({ ...group, group_members: updatedMembers });
-          const { data: membersData } = await supabase
-            .from("users")
-            .select("id, username, avatar_url, email")
-            .in("id", updatedMembers);
-
-          if (membersData) setMembers(membersData);
+          // The group update will be handled by the real-time subscription
           startTrackingLocation();
-
-          // Reset group forms after successfully joining
-          resetGroupForms();
+          await refreshGroups();
         },
         // Cancel callback
         () => {
@@ -383,7 +516,7 @@ const GroupMapScreen = () => {
         return;
       }
     } catch (error) {
-      console.error("Error joining group :", error);
+      console.error("Error joining group:", error);
     }
   };
 
@@ -413,398 +546,370 @@ const GroupMapScreen = () => {
     });
   };
 
-  // Render states
+  const handleMemberSelect = (member: MemberWithLocation) => {
+    if (!mapRef.current || !member.location) return;
+
+    mapRef.current.animateToRegion(
+      {
+        latitude: member.location.latitude,
+        longitude: member.location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      500
+    );
+
+    setShowMembersList(false);
+  };
+
+  const handleRequestProcessed = async () => {
+    try {
+      const { data: updatedGroup } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("group_code", code)
+        .single();
+
+      if (updatedGroup) {
+        setGroup(updatedGroup);
+
+        // Update pending count
+        if (updatedGroup.request && updatedGroup.request.length > 0) {
+          const pendingRequests = updatedGroup.request.filter(
+            (req: RequestMember) => req.status === "pending"
+          );
+          setPendingCount(pendingRequests.length);
+        } else {
+          setPendingCount(0);
+        }
+
+        // Refresh members if needed
+        const { data: membersData } = await supabase
+          .from("users")
+          .select("id, username, avatar_url, email")
+          .in("id", updatedGroup.group_members);
+
+        if (membersData) setMembers(membersData);
+      }
+    } catch (error) {
+      console.error("Error refreshing group data:", error);
+    }
+  };
+
+  // Render loading, error, and not found states
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <Text style={{ color: textColor }}>Loading group map...</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }}>
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <Text style={{ color: textColor }}>Loading group map...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <MaterialIcons name="error-outline" size={64} color="#EF4444" />
-        <Text style={[styles.errorText, { color: textColor }]}>{error}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }}>
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <MaterialIcons name="error-outline" size={64} color="#EF4444" />
+          <Text style={[styles.errorText, { color: textColor }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: buttonColor }]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.buttonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!group) {
     return (
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        <MaterialIcons name="group-off" size={64} color="#9CA3AF" />
-        <Text style={[styles.errorText, { color: textColor }]}>
-          Group not found
-        </Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: bgColor }}>
+        <View style={[styles.container, { backgroundColor: bgColor }]}>
+          <MaterialIcons name="group-off" size={64} color="#9CA3AF" />
+          <Text style={[styles.errorText, { color: textColor }]}>
+            Group not found
+          </Text>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: buttonColor }]}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.buttonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {initialRegion && isMapReady ? (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === "ios" ? undefined : PROVIDER_GOOGLE}
-          initialRegion={initialRegion}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-          showsCompass={true}
-          customMapStyle={mapStyle}
-        >
-          {destination && (
-            <Marker
-              coordinate={{
-                latitude: destination.latitude,
-                longitude: destination.longitude,
-              }}
-              pinColor="red"
-            >
-              <Callout>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{destination.name}</Text>
-                  <Text style={styles.calloutSubtitle}>Destination</Text>
-                </View>
-              </Callout>
-            </Marker>
-          )}
-
-          {membersWithLocations.map((member) =>
-            member.location ? (
-              <Marker
-                key={member.id}
-                coordinate={{
-                  latitude: member.location.latitude,
-                  longitude: member.location.longitude,
-                }}
-                pinColor={
-                  member.isLeader
-                    ? "gold"
-                    : member.isCurrentUser
-                    ? "blue"
-                    : "green"
-                }
-              >
-                <View style={styles.markerAvatarContainer}>
-                  <View
-                    style={[
-                      styles.markerAvatar,
-                      {
-                        backgroundColor: member.isLeader
-                          ? "#FBBF24"
-                          : member.isCurrentUser
-                          ? "#3B82F6"
-                          : "#22C55E",
-                        borderColor: "white",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.markerAvatarText}>
-                      {getInitials(member.username)}
-                    </Text>
-                  </View>
-                </View>
-                <Callout>
-                  <View style={styles.callout}>
-                    <Text style={styles.calloutTitle}>{member.username}</Text>
-                    <Text style={styles.calloutSubtitle}>
-                      {member.isLeader ? "Group Leader" : "Member"}
-                      {member.isCurrentUser ? " (You)" : ""}
-                    </Text>
-                  </View>
-                </Callout>
-              </Marker>
-            ) : null
-          )}
-        </MapView>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <Text style={{ color: textColor }}>Loading map...</Text>
-        </View>
-      )}
-
-      {/* Header with Back Button */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: isDark
-              ? "rgba(0,0,0,0.8)"
-              : "rgba(255,255,255,0.8)",
-          },
-        ]}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-        >
-          <MaterialIcons name="arrow-back" size={24} color={textColor} />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: textColor }]}>
-            {group.group_name}
-          </Text>
-          <View style={styles.headerInfo}>
-            <Text style={[styles.headerCode, { color: textColor }]}>
-              Code: <Text style={styles.bold}>{group.group_code}</Text>
-            </Text>
-            <TouchableOpacity onPress={shareGroupCode}>
-              <MaterialIcons name="share" size={20} color={textColor} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: "#3B82F6" }]}
-            onPress={fitToMarkers}
-          >
-            <MaterialIcons name="my-location" size={20} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              { backgroundColor: showMembersList ? "#EF4444" : "#3B82F6" },
-            ]}
-            onPress={() => setShowMembersList(!showMembersList)}
-          >
-            <MaterialIcons
-              name={showMembersList ? "close" : "people"}
-              size={20}
-              color="white"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Members Panel */}
-      {showMembersList && (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: bgColor }}
+      edges={["top", "right", "left"]}
+    >
+      <View style={[styles.container, { backgroundColor: bgColor }]}>
+        {/* Header */}
         <View
           style={[
-            styles.membersPanel,
-            {
-              backgroundColor: isDark
-                ? "rgba(26,32,44,0.9)"
-                : "rgba(255,255,255,0.9)",
-            },
+            styles.header,
+            { borderBottomColor: borderColor, backgroundColor: bgColor },
           ]}
         >
-          <View style={styles.membersHeader}>
-            <Text style={[styles.membersTitle, { color: textColor }]}>
-              Group Members ({members.length})
-            </Text>
-            <TouchableOpacity onPress={() => setShowMembersList(false)}>
-              <MaterialIcons name="close" size={20} color={textColor} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.membersList}>
-            {members.length > 0 ? (
-              members.map((member) => {
-                const memberWithLoc = membersWithLocations.find(
-                  (m) => m.id === member.id
-                );
-                const hasLocation = memberWithLoc?.location !== undefined;
-
-                return (
-                  <TouchableOpacity
-                    key={member.id}
-                    onPress={() => {
-                      if (
-                        hasLocation &&
-                        mapRef.current &&
-                        memberWithLoc?.location
-                      ) {
-                        mapRef.current.animateToRegion(
-                          {
-                            latitude: memberWithLoc.location.latitude,
-                            longitude: memberWithLoc.location.longitude,
-                            latitudeDelta: 0.01,
-                            longitudeDelta: 0.01,
-                          },
-                          1000
-                        );
-                        setShowMembersList(false);
-                      }
-                    }}
-                    style={[
-                      styles.memberItem,
-                      {
-                        backgroundColor: hasLocation
-                          ? cardBgColor
-                          : "transparent",
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.memberAvatar,
-                        {
-                          backgroundColor:
-                            member.id === group.leader_id
-                              ? "#FBBF24"
-                              : "#3B82F6",
-                        },
-                      ]}
-                    >
-                      <Text style={styles.memberAvatarText}>
-                        {getInitials(member.username)}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={[styles.memberName, { color: textColor }]}>
-                        {member.username}
-                        {member.id === group.leader_id && (
-                          <Text style={{ color: "#FBBF24" }}> (Leader)</Text>
-                        )}
-                        {member.id === userDetails?.id && (
-                          <Text style={{ color: "#3B82F6" }}> (You)</Text>
-                        )}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.memberStatus,
-                          { color: hasLocation ? "#22C55E" : "#6B7280" },
-                        ]}
-                      >
-                        {hasLocation
-                          ? "Location available"
-                          : "No location data"}
-                      </Text>
-                    </View>
-                    {hasLocation && (
-                      <MaterialIcons
-                        name="location-on"
-                        size={20}
-                        color="#22C55E"
-                      />
-                    )}
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
-              <Text style={{ color: "#9CA3AF" }}>No members in this group</Text>
-            )}
-          </ScrollView>
-          {!isUserMember() && (
-            <TouchableOpacity style={styles.joinButton} onPress={joinGroup}>
-              <MaterialIcons name="group-add" size={20} color="white" />
-              <Text style={styles.joinButtonText}>Join Group</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      <View
-        style={[
-          styles.bottomSheet,
-          { backgroundColor: cardBgColor, borderTopColor: borderColor },
-        ]}
-      >
-        <View style={[styles.bottomSheetHandle]} />
-
-        {/* Group Info Section */}
-        <ScrollView style={styles.groupInfoSection}>
-          <Text style={[styles.groupName, { color: textColor }]}>
-            {group.group_name}
-          </Text>
-          <Text style={[styles.groupType]}>
-            {group.group_type === "TravelToDestination"
-              ? "Destination Group"
-              : "Follow Group"}
-          </Text>
-
-          {/* Destination Details Section */}
-          {group.group_type === "TravelToDestination" &&
-            group.destination_id && (
-              <View style={styles.destinationSection}>
-                <DestinationDetails destinationId={group.destination_id} />
-              </View>
-            )}
-
-          <View style={styles.actionsRow}>
+          <View style={styles.headerLeft}>
             <TouchableOpacity
-              style={[styles.actionButton]}
-              onPress={shareGroupCode}
+              onPress={() => router.back()}
+              style={styles.backButton}
             >
-              <MaterialIcons name="share" size={20} />
-              <Text style={[styles.actionButtonText]}>Share</Text>
+              <MaterialIcons name="arrow-back" size={24} color={textColor} />
+            </TouchableOpacity>
+            <View>
+              <Text style={[styles.groupName, { color: textColor }]}>
+                {group.group_name}
+              </Text>
+              <Text style={[styles.groupCode, { color: textColor }]}>
+                Code: {group.group_code}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.headerRight}>
+            {isUserLeader() && pendingCount > 0 && (
+              <TouchableOpacity
+                style={[styles.iconButton, { borderColor }]}
+                onPress={() => setShowPendingRequests(true)}
+              >
+                <MaterialIcons
+                  name="notifications-active"
+                  size={22}
+                  color={textColor}
+                />
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{pendingCount}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.iconButton, { borderColor }]}
+              onPress={() => setShowMembersList(true)}
+            >
+              <MaterialIcons name="people" size={22} color={textColor} />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionButton]}
+              style={[styles.iconButton, { borderColor }]}
               onPress={fitToMarkers}
             >
-              <MaterialIcons name="my-location" size={20} />
-              <Text style={[styles.actionButtonText]}>Fit Map</Text>
+              <MaterialIcons name="my-location" size={22} color={textColor} />
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Members Section */}
-          <View style={styles.membersSection}>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>
-              Group Members ({membersWithLocations.length})
+        {/* Group Stats */}
+        <View
+          style={[
+            styles.statsContainer,
+            { backgroundColor: cardBgColor, borderColor },
+          ]}
+        >
+          <View style={styles.statsItem}>
+            <Text style={[styles.statsValue, { color: textColor }]}>
+              {group.group_members.length}
             </Text>
-            {membersWithLocations.map((member) => (
-              <View
-                key={member.id}
-                style={[
-                  styles.memberItem,
-                  {
-                    backgroundColor: cardBgColor,
-                    borderColor: borderColor,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.memberAvatar,
-                    {
-                      backgroundColor:
-                        member.id === group.leader_id ? "#FBBF24" : "#3B82F6",
-                    },
-                  ]}
-                >
-                  <Text style={styles.memberAvatarText}>
-                    {getInitials(member.username)}
-                  </Text>
-                </View>
-                <View style={styles.memberInfo}>
-                  <Text style={[styles.memberName, { color: textColor }]}>
-                    {member.username}
-                    {member.id === group.leader_id && (
-                      <Text style={{ color: "#FBBF24" }}> (Leader)</Text>
-                    )}
-                    {member.id === userDetails?.id && (
-                      <Text style={{ color: "#3B82F6" }}> (You)</Text>
-                    )}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.memberStatus,
-                      {
-                        color: member.location ? "#22C55E" : "#6B7280",
-                      },
-                    ]}
-                  >
-                    {member.location
-                      ? "Location available"
-                      : "No location data"}
-                  </Text>
-                </View>
-              </View>
-            ))}
+            <Text style={[styles.statsLabel, { color: textColor }]}>
+              Members
+            </Text>
           </View>
-        </ScrollView>
+
+          {isUserLeader() && (
+            <>
+              <View
+                style={[styles.divider, { backgroundColor: borderColor }]}
+              />
+              <View style={styles.statsItem}>
+                <Text style={[styles.statsValue, { color: textColor }]}>
+                  {pendingCount}
+                </Text>
+                <Text style={[styles.statsLabel, { color: textColor }]}>
+                  Pending
+                </Text>
+              </View>
+            </>
+          )}
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+          <View style={styles.statsItem}>
+            <Text style={[styles.statsValue, { color: textColor }]}>
+              {membersWithLocations.filter((m) => m.location).length}
+            </Text>
+            <Text style={[styles.statsLabel, { color: textColor }]}>
+              Online
+            </Text>
+          </View>
+        </View>
+
+        {/* Group Actions */}
+        {isUserMember() && (
+          <GroupActions
+            groupId={group.group_id}
+            groupName={group.group_name}
+            isLeader={isUserLeader()}
+            membersCount={group.group_members.length}
+            textColor={textColor}
+            borderColor={borderColor}
+            buttonColor={buttonColor}
+            bgColor={bgColor}
+          />
+        )}
+
+        {/* Map View */}
+        {initialRegion && isMapReady ? (
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              style={styles.map}
+              provider={Platform.OS === "ios" ? undefined : PROVIDER_GOOGLE}
+              initialRegion={initialRegion}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+              showsCompass={true}
+            >
+              {destination && (
+                <Marker
+                  coordinate={{
+                    latitude: destination.latitude,
+                    longitude: destination.longitude,
+                  }}
+                  pinColor="red"
+                >
+                  <Callout>
+                    <View style={styles.callout}>
+                      <Text style={styles.calloutTitle}>
+                        {destination.name}
+                      </Text>
+                      <Text style={styles.calloutSubtitle}>Destination</Text>
+                    </View>
+                  </Callout>
+                </Marker>
+              )}
+
+              {membersWithLocations.map((member) =>
+                member.location ? (
+                  <Marker
+                    key={member.id}
+                    coordinate={{
+                      latitude: member.location.latitude,
+                      longitude: member.location.longitude,
+                    }}
+                    pinColor={
+                      member.isLeader
+                        ? "gold"
+                        : member.isCurrentUser
+                        ? "blue"
+                        : "green"
+                    }
+                  >
+                    <View style={styles.markerAvatarContainer}>
+                      <View
+                        style={[
+                          styles.markerAvatar,
+                          {
+                            backgroundColor: member.isLeader
+                              ? "#FBBF24"
+                              : member.isCurrentUser
+                              ? "#3B82F6"
+                              : "#22C55E",
+                            borderColor: "white",
+                          },
+                        ]}
+                      >
+                        <Text style={styles.markerAvatarText}>
+                          {getInitials(member.username)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Callout>
+                      <View style={styles.callout}>
+                        <Text style={styles.calloutTitle}>
+                          {member.username}
+                        </Text>
+                        <Text style={styles.calloutSubtitle}>
+                          {member.isLeader ? "Group Leader" : "Member"}
+                          {member.isCurrentUser ? " (You)" : ""}
+                        </Text>
+                      </View>
+                    </Callout>
+                  </Marker>
+                ) : null
+              )}
+            </MapView>
+          </View>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={{ color: textColor }}>Loading map...</Text>
+          </View>
+        )}
+
+        {/* Bottom Join Button for non-members */}
+        {!isUserMember() && (
+          <View style={styles.joinButtonContainer}>
+            <TouchableOpacity
+              style={[styles.joinButton, { backgroundColor: buttonColor }]}
+              onPress={joinGroup}
+            >
+              <MaterialIcons name="person-add" size={24} color="white" />
+              <Text style={styles.joinButtonText}>Join Group</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Modals */}
+        <Modal
+          visible={showMembersList}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowMembersList(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <GroupMembersPanel
+                members={membersWithLocations}
+                leaderId={group.leader_id}
+                currentUserId={userDetails?.id}
+                textColor={textColor}
+                cardBgColor={cardBgColor}
+                onMemberSelect={handleMemberSelect}
+                onClose={() => setShowMembersList(false)}
+              />
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={showPendingRequests && isUserLeader()}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowPendingRequests(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <PendingRequestsPanel
+                groupId={group.group_id}
+                requests={group.request || []}
+                textColor={textColor}
+                cardBgColor={cardBgColor}
+                bgColor={bgColor}
+                borderColor={borderColor}
+                isLeader={isUserLeader()}
+                onClose={() => setShowPendingRequests(false)}
+                onRequestProcessed={handleRequestProcessed}
+              />
+            </View>
+          </View>
+        </Modal>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -812,9 +917,92 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerRight: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  groupName: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  groupCode: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -5,
+    right: -5,
+    backgroundColor: "#EF4444",
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    marginVertical: 12,
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  statsItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statsValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  statsLabel: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  divider: {
+    width: 1,
+    height: 36,
+  },
+  mapContainer: {
+    flex: 1,
+    overflow: "hidden",
+    borderRadius: 12,
+    margin: 16,
+  },
   map: {
-    width: Dimensions.get("window").width,
-    height: Dimensions.get("window").height,
+    width: "100%",
+    height: "100%",
   },
   loadingContainer: {
     flex: 1,
@@ -822,140 +1010,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   errorText: {
-    fontSize: 18,
+    fontSize: 16,
     textAlign: "center",
-    marginTop: 16,
-    marginBottom: 24,
+    margin: 16,
+  },
+  joinButtonContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  joinButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  joinButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   button: {
-    backgroundColor: "#3B82F6",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    marginTop: 16,
   },
   buttonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
   },
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    flexDirection: "row",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  headerContent: {
+  modalContainer: {
     flex: 1,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-  },
-  headerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  headerCode: {
-    fontSize: 14,
-  },
-  bold: {
-    fontWeight: "bold",
-  },
-  headerActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     justifyContent: "center",
-    alignItems: "center",
-  },
-  membersPanel: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
     padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "60%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    elevation: 6,
   },
-  membersHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  membersTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  membersList: {
-    maxHeight: 300,
-  },
-  memberItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-    borderRadius: 8,
-    gap: 12,
-  },
-  memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  memberAvatarText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  memberName: {
-    fontSize: 16,
-  },
-  memberStatus: {
-    fontSize: 12,
-  },
-  joinButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#3B82F6",
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
-    gap: 8,
-  },
-  joinButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+  modalContent: {
+    borderRadius: 12,
+    overflow: "hidden",
   },
   markerAvatarContainer: {
     alignItems: "center",
@@ -974,7 +1070,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   callout: {
-    padding: 4,
+    padding: 8,
     width: 150,
   },
   calloutTitle: {
@@ -983,79 +1079,7 @@ const styles = StyleSheet.create({
   },
   calloutSubtitle: {
     fontSize: 12,
-  },
-  bottomSheet: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: "40%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    elevation: 6,
-  },
-  bottomSheetHandle: {
-    height: 4,
-    width: 40,
-    borderRadius: 2,
-    backgroundColor: "#E5E7EB",
-    alignSelf: "center",
-    marginBottom: 8,
-  },
-  groupInfoSection: {
-    flex: 1,
-  },
-  groupName: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  groupType: {
-    fontSize: 14,
     color: "#6B7280",
-  },
-  destinationSection: {
-    marginBottom: 16,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonBgColor: {
-    backgroundColor: "#3B82F6",
-  },
-  buttonTextColor: {
-    color: "white",
-  },
-  subTextColor: {
-    color: "#6B7280",
-  },
-  handleColor: {
-    backgroundColor: "#E5E7EB",
-  },
-  membersSection: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  memberInfo: {
-    flex: 1,
   },
 });
 
