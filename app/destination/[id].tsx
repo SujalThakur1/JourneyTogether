@@ -21,6 +21,7 @@ import { useApp } from "../../contexts/AppContext";
 import { useGroups } from "../../contexts/GroupsContext";
 import { supabase } from "../../lib/supabase";
 import MapView, { Marker } from "react-native-maps";
+import { ToastManager } from "../components/ui/toast";
 
 const { width } = Dimensions.get("window");
 
@@ -103,7 +104,7 @@ export default function DestinationDetail() {
 
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("users")
         .select("savedtrips")
         .eq("id", userDetails.id)
         .single();
@@ -122,13 +123,16 @@ export default function DestinationDetail() {
 
   const toggleSaveDestination = async () => {
     if (!userDetails) {
-      Alert.alert("Sign In Required", "Please sign in to save destinations");
+      ToastManager.show({
+        message: "Please sign in to save destinations",
+        type: "warning",
+      });
       return;
     }
 
     try {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("users")
         .select("savedtrips")
         .eq("id", userDetails.id)
         .single();
@@ -149,7 +153,7 @@ export default function DestinationDetail() {
       }
 
       const { error: updateError } = await supabase
-        .from("profiles")
+        .from("users")
         .update({ savedtrips: savedTrips })
         .eq("id", userDetails.id);
 
@@ -161,12 +165,12 @@ export default function DestinationDetail() {
       setIsSaved(!isSaved);
       setUserUpdated(true);
 
-      Alert.alert(
-        isSaved ? "Destination Removed" : "Destination Saved",
-        isSaved
+      ToastManager.show({
+        message: isSaved
           ? "This destination has been removed from your saved trips"
-          : "This destination has been added to your saved trips"
-      );
+          : "This destination has been added to your saved trips",
+        type: isSaved ? "info" : "success",
+      });
     } catch (error) {
       console.error("Error:", error);
     }

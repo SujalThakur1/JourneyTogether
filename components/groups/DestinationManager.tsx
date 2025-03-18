@@ -121,7 +121,7 @@ const DestinationManager: React.FC<DestinationManagerProps> = ({
         destinationName
       )}&inputtype=textquery&fields=place_id&key=${placesApiKey}`;
 
-      console.log("Google Place Api Key has been used")
+      console.log("Google Place Api Key has been used");
       const searchResponse = await axios.get(searchUrl);
       if (!searchResponse.data.candidates?.[0]?.place_id) {
         console.log(`No place found for: ${destinationName}`);
@@ -300,9 +300,7 @@ const DestinationManager: React.FC<DestinationManagerProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    
-  },
+  container: {},
   label: {
     fontSize: 14,
     marginBottom: 4,

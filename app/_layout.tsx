@@ -13,6 +13,7 @@ import { ColorProvider } from "@/contexts/ColorContext";
 import "react-native-get-random-values";
 import { GroupsProvider } from "../contexts/GroupsContext";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ToastContainer } from "./components/ui/toast";
 
 // Create a StatusBarComponent that uses the ColorModeContext
 function StatusBarComponent() {
@@ -116,6 +117,7 @@ export default function RootLayout() {
                 />
               </Stack>
             </GroupsProvider>
+            <ToastContainer />
           </AppProvider>
         </ColorProvider>
       </ColorModeProvider>
