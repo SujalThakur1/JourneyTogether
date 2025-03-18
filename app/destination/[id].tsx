@@ -12,6 +12,7 @@ import {
   Animated,
   Share,
   Alert,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -22,6 +23,7 @@ import { useGroups } from "../../contexts/GroupsContext";
 import { supabase } from "../../lib/supabase";
 import MapView, { Marker } from "react-native-maps";
 import { ToastManager } from "../components/ui/toast";
+import CreateGroupBottomSheet from "../../components/Destination/bottomSheet";
 
 const { width } = Dimensions.get("window");
 
@@ -72,6 +74,7 @@ export default function DestinationDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
 
   useEffect(() => {
     fetchDestinationDetails();
@@ -178,12 +181,7 @@ export default function DestinationDetail() {
 
   const handleCreateGroup = () => {
     if (!destinationData) return;
-
-    // Use the context's setDestination instead of the local one
-    setDestinationId(destinationData.destination_id);
-    setContextDestination(destinationData.name);
-
-    router.push("/group/create");
+    setShowBottomSheet(true);
   };
 
   const shareDestination = async () => {
@@ -546,6 +544,18 @@ export default function DestinationDetail() {
           <Text style={styles.createGroupButtonText}>Create Group Trip</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Bottom Sheet */}
+      {destinationData && (
+        <CreateGroupBottomSheet
+          isVisible={showBottomSheet}
+          onClose={() => setShowBottomSheet(false)}
+          destinationName={destinationData.name}
+          destinationId={destinationData.destination_id}
+          maxHeight={Platform.OS === "ios" ? 750 : 550}
+          mb={20}
+        />
+      )}
     </View>
   );
 }
@@ -734,6 +744,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   createGroupButtonText: {
     color: "#FFFFFF",

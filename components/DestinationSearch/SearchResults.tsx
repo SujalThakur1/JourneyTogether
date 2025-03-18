@@ -152,6 +152,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   recommendedHeader: {
     fontSize: 18,
@@ -180,14 +181,19 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   listContainer: {
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   destinationItem: {
     flexDirection: "row",
-    marginBottom: 16,
-    borderRadius: 12,
+    marginBottom: 12,
+    borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   destinationImage: {
     width: 100,

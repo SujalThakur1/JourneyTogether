@@ -1,15 +1,30 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import React, { useState, createContext, useContext } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "../../contexts/ColorContext";
 import PastTripsTab from "../../components/history/PastTripsTab";
 import SavedTripsTab from "../../components/history/SavedTripsTab";
 import { UserProvider } from "../../contexts/UserContext";
+import CreateGroupBottomSheet from "../../components/Destination/bottomSheet";
+
+// Create a context for handling bottom sheet state across components
+interface BottomSheetContextType {
+  showBottomSheet: boolean;
+  destinationName: string;
+  destinationId: number;
+  openBottomSheet: (name: string, id: number) => void;
+  closeBottomSheet: () => void;
+}
+
+export const BottomSheetContext = createContext<BottomSheetContextType>({
+  showBottomSheet: false,
+  destinationName: "",
+  destinationId: 1,
+  openBottomSheet: () => {},
+  closeBottomSheet: () => {},
+});
+
+export const useBottomSheet = () => useContext(BottomSheetContext);
 
 interface Trip {
   id: number;
@@ -55,73 +70,110 @@ export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const colors = useColors();
 
+  // Bottom sheet state
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
+  const [destinationName, setDestinationName] = useState("New Trip");
+  const [destinationId, setDestinationId] = useState(1);
+
+  // Bottom sheet handlers
+  const openBottomSheet = (name: string, id: number) => {
+    setDestinationName(name);
+    setDestinationId(id);
+    setShowBottomSheet(true);
+  };
+
+  const closeBottomSheet = () => {
+    setShowBottomSheet(false);
+  };
+
+  // Context value
+  const bottomSheetContextValue = {
+    showBottomSheet,
+    destinationName,
+    destinationId,
+    openBottomSheet,
+    closeBottomSheet,
+  };
+
   return (
     <UserProvider>
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.bgColor }]}
-      >
-        <View
-          style={[styles.header, { borderBottomColor: colors.borderColor }]}
+      <BottomSheetContext.Provider value={bottomSheetContextValue}>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.bgColor }]}
         >
-          <Text style={[styles.heading, { color: colors.textColor }]}>
-            History
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.tabContainer,
-            { borderBottomColor: colors.borderColor },
-          ]}
-        >
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === 0 && [
-                styles.activeTab,
-                { borderBottomColor: colors.activeTabBorderColor },
-              ],
-            ]}
-            onPress={() => setActiveTab(0)}
+          <View
+            style={[styles.header, { borderBottomColor: colors.borderColor }]}
           >
-            <Text
-              style={[
-                styles.tabText,
-                {
-                  color: colors.tabTextColor,
-                  fontWeight: activeTab === 0 ? "bold" : "normal",
-                },
-              ]}
-            >
-              Past Trips
+            <Text style={[styles.heading, { color: colors.textColor }]}>
+              History
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              activeTab === 1 && [
-                styles.activeTab,
-                { borderBottomColor: colors.activeTabBorderColor },
-              ],
-            ]}
-            onPress={() => setActiveTab(1)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                {
-                  color: colors.tabTextColor,
-                  fontWeight: activeTab === 1 ? "bold" : "normal",
-                },
-              ]}
-            >
-              Saved
-            </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
 
-        {activeTab === 0 ? <PastTripsTab /> : <SavedTripsTab />}
-      </SafeAreaView>
+          <View
+            style={[
+              styles.tabContainer,
+              { borderBottomColor: colors.borderColor },
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 0 && [
+                  styles.activeTab,
+                  { borderBottomColor: colors.activeTabBorderColor },
+                ],
+              ]}
+              onPress={() => setActiveTab(0)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color: colors.tabTextColor,
+                    fontWeight: activeTab === 0 ? "bold" : "normal",
+                  },
+                ]}
+              >
+                Past Trips
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 1 && [
+                  styles.activeTab,
+                  { borderBottomColor: colors.activeTabBorderColor },
+                ],
+              ]}
+              onPress={() => setActiveTab(1)}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  {
+                    color: colors.tabTextColor,
+                    fontWeight: activeTab === 1 ? "bold" : "normal",
+                  },
+                ]}
+              >
+                Saved
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeTab === 0 ? <PastTripsTab /> : <SavedTripsTab />}
+
+          {/* Bottom Sheet positioned at the root level */}
+          <CreateGroupBottomSheet
+            isVisible={showBottomSheet}
+            onClose={closeBottomSheet}
+            destinationName={destinationName}
+            destinationId={destinationId}
+            maxHeight={Platform.OS === "ios" ? 750 : 550}
+            mb={90}
+          />
+        </SafeAreaView>
+      </BottomSheetContext.Provider>
     </UserProvider>
   );
 }

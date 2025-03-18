@@ -17,6 +17,7 @@ import DestinationSearch from "../../components/DestinationSearch/index";
 import SearchResults from "../../components/DestinationSearch/SearchResults";
 import { supabase } from "../../lib/supabase";
 import axios from "axios";
+import { useRouter } from "expo-router";
 
 interface Destination {
   destination_id: number;
@@ -39,6 +40,14 @@ export default function DiscoverScreen() {
   const [searchResults, setSearchResults] = useState<Destination[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const router = useRouter();
+  const { userDetails, userUpdated, setUserUpdated } = useApp();
+  
+  useEffect(() => {
+    if (userDetails === null && !userUpdated) {
+      setUserUpdated(true);
+    }
+  }, [userDetails, userUpdated, setUserUpdated]);
 
   // Animation setup for loading spinner
   const [spinValue] = useState(new Animated.Value(0));
@@ -236,6 +245,21 @@ export default function DiscoverScreen() {
         )}
       </View>
 
+      {/* Search Results overlay */}
+      {showSearch && hasSearched && (
+        <View style={styles.searchResultsOverlay}>
+          <SearchResults
+            destinations={searchResults}
+            isLoading={isSearching}
+            onDestinationPress={(destination) => {
+              handleCloseSearch();
+              // Navigate to the destination
+              router.push(`/destination/${destination.destination_id}`);
+            }}
+          />
+        </View>
+      )}
+
       {!showSearch && (
         <View>
           <ScrollView
@@ -273,12 +297,13 @@ export default function DiscoverScreen() {
       )}
 
       {showSearch && hasSearched ? (
-        <View style={styles.searchResultsContainer}>
-          <SearchResults
-            destinations={searchResults}
-            isLoading={isSearching}
-            emptyMessage={`No destinations found for "${searchText}"`}
-          />
+        <View style={styles.contentWhenSearching}>
+          {/* We don't need to show search results here anymore as they are in the overlay */}
+          <Text
+            style={[styles.searchingText, { color: colors.mutedTextColor }]}
+          >
+            Browse through search results above
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -324,37 +349,50 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 5,
-    marginHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+    zIndex: 999,
   },
   heading: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "700",
   },
   headerIcons: {
     flexDirection: "row",
-    alignItems: "center",
   },
   iconButton: {
     marginLeft: 16,
+    padding: 8,
   },
   searchContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 16,
+    zIndex: 50,
   },
   backButton: {
-    marginRight: 8,
+    marginRight: 12,
+    padding: 4,
   },
   searchInputContainer: {
     flex: 1,
+    zIndex: 50,
   },
-  searchResultsContainer: {
-    flex: 1,
+  searchResultsOverlay: {
+    position: "absolute",
+    top: 130, // Adjust based on your header height
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.02)",
+    zIndex: 40,
     paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
   categoriesContainer: {
     paddingHorizontal: 5,
@@ -386,5 +424,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+  contentWhenSearching: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: 40,
+  },
+  searchingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
 });

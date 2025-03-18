@@ -6,12 +6,14 @@ import TripCard from "./TripCard";
 import EmptyState from "./EmptyState";
 import { supabase } from "../../lib/supabase";
 import { useUser } from "../../contexts/UserContext";
+import { useBottomSheet } from "../../app/(tabs)/history";
 
 export default function SavedTripsTab() {
   const { user } = useUser();
   const colors = useColors();
   const [savedTrips, setSavedTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
+  const { openBottomSheet } = useBottomSheet();
 
   useEffect(() => {
     if (!user) {
@@ -63,7 +65,7 @@ export default function SavedTripsTab() {
   }, [user]);
 
   const handleCreateGroup = () => {
-    console.log("Create Group button pressed");
+    openBottomSheet("New Trip", 1);
   };
 
   if (loading) {

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Trip } from "./types";
 import { useColors } from "../../contexts/ColorContext";
 import { useRouter } from "expo-router";
+import { useBottomSheet } from "../../app/(tabs)/history";
 
 interface TripCardProps {
   trip: Trip;
@@ -12,9 +13,10 @@ interface TripCardProps {
 export default function TripCard({ trip }: TripCardProps) {
   const colors = useColors();
   const router = useRouter();
+  const { openBottomSheet } = useBottomSheet();
 
   const handleCreateGroup = () => {
-    console.log("Create Group button pressed for trip:", trip.title);
+    openBottomSheet(trip.title, trip.id);
   };
 
   const handleViewDetails = () => {

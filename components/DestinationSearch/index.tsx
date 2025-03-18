@@ -13,20 +13,17 @@ import { useGroups } from "../../contexts/GroupsContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "../../contexts/ColorContext";
 
-// Define props interface for type safety
 interface DestinationSearchProps {
   onSearch: (searchText: string) => void;
   placeholder?: string;
   onDestinationSelect?: (destinationId: number) => void;
 }
 
-// Main component for destination search functionality
 const DestinationSearch: React.FC<DestinationSearchProps> = ({
   onSearch,
   placeholder = "Search destinations...",
   onDestinationSelect,
 }) => {
-  // Destructure context values for state management and styling
   const {
     destination,
     setDestination,
@@ -41,19 +38,16 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
   } = useGroups();
 
   const colors = useColors();
-  const [isProcessing, setIsProcessing] = useState(false); // Loading state for destination processing
-  const [processingError, setProcessingError] = useState<string | null>(null); // Error state for processing
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
 
-  // Stores destination data in Supabase database
   const storeDestination = async (
     name: string,
     location: string,
     latitude: number,
     longitude: number,
-    rating: number = 0
   ) => {
     try {
-      // Check if destination already exists to avoid duplicates
       const { data: existingDestinations, error: searchError } = await supabase
         .from("destination")
         .select("destination_id")
@@ -71,7 +65,6 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
         return existingDestinations[0].destination_id;
       }
 
-      // Insert new destination if it doesn't exist
       const { data: newDestination, error: insertError } = await supabase
         .from("destination")
         .insert({
@@ -79,9 +72,9 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
           location,
           latitude,
           longitude,
-          rating,
-          category_id: 1, // Default category
-          images: [], // Initialize empty images array
+          rating: 4.6,
+          category_id: 1,
+          images: [],
           created_at: new Date().toISOString(),
         })
         .select("destination_id")
@@ -99,13 +92,11 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
     }
   };
 
-  // Fetches and stores destination images from Google Places API
   const storeDestinationImages = async (
     destinationId: number,
     destinationName: string
   ) => {
     try {
-      // Check if images already exist for this destination
       const { data: existingDestination, error: fetchError } = await supabase
         .from("destination")
         .select("images")
@@ -123,8 +114,6 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
       }
 
       const placesApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-      // Get place ID from Google Places API
       const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(
         destinationName
       )}&inputtype=textquery&fields=place_id&key=${placesApiKey}`;
@@ -137,21 +126,20 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
       }
 
       const placeId = searchResponse.data.candidates[0].place_id;
-
-      // Fetch place details including photos
       const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos&key=${placesApiKey}`;
       const detailsResponse = await axios.get(detailsUrl);
       const photos = detailsResponse.data.result?.photos || [];
 
-      // Generate image URLs (limited to 5)
       const imageUrls = [];
       for (let i = 0; i < Math.min(photos.length, 5); i++) {
         const photoRef = photos[i].photo_reference;
         const imageUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoRef}&key=${placesApiKey}`;
         imageUrls.push(imageUrl);
+
       }
 
-      // Update destination with image URLs
+      
+
       const { error: updateError } = await supabase
         .from("destination")
         .update({
@@ -168,12 +156,15 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
     }
   };
 
-  // Handles selection of a destination from autocomplete
   const handleDestinationSelect = async (data: any, details: any = null) => {
     try {
       setDestination(data.description);
       setProcessingError(null);
 
+      console.log("data ->", data);
+      console.log("--------------------------------");
+      console.log("details ->", details);
+      console.log("--------------------------------");
       if (details?.geometry?.location) {
         const coordinates = {
           latitude: details.geometry.location.lat,
@@ -187,7 +178,6 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
           details.formatted_address || data.description,
           coordinates.latitude,
           coordinates.longitude,
-          details.rating || 0
         );
 
         await storeDestinationImages(destinationId, data.description);
@@ -208,18 +198,15 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
     }
   };
 
-  // Triggers search when search button is pressed
   const handleSearchPress = () => {
     if (destination) {
       onSearch(destination);
     }
   };
 
-  // Render the search component
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
-        {/* Google Places Autocomplete input */}
         <GooglePlacesAutocomplete
           placeholder={placeholder}
           onPress={handleDestinationSelect}
@@ -229,8 +216,11 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
           }}
           fetchDetails={true}
           styles={{
-            // Custom styles for autocomplete component
-            container: { flex: 1, zIndex: 20 },
+            container: {
+              flex: 1,
+              zIndex: 9999,
+              position: "relative",
+            },
             textInput: {
               ...styles.input,
               backgroundColor: isDark ? "#27272a" : "white",
@@ -241,7 +231,38 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
               color: inputTextColor,
               paddingRight: 40,
             },
-            // ... other styles
+            listView: {
+              position: "absolute",
+              top: 45,
+              left: 0,
+              right: 0,
+              backgroundColor: isDark ? "#27272a" : "white",
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: inputBorderColor,
+              elevation: 5,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              zIndex: 9999,
+            },
+            row: {
+              backgroundColor: isDark ? "#27272a" : "white",
+              padding: 13,
+              height: 50,
+              flexDirection: "row",
+            },
+            separator: {
+              height: 1,
+              backgroundColor: isDark ? "#3f3f46" : "#e0e0e0",
+            },
+            description: {
+              color: inputTextColor,
+            },
+            poweredContainer: {
+              display: "none", // This hides the "Powered by Google" section
+            },
           }}
           textInputProps={{
             onFocus: () => setFocusedInput("destination"),
@@ -252,9 +273,7 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
             onChangeText: setDestination,
             onSubmitEditing: handleSearchPress,
           }}
-          // ... other props
         />
-        {/* Search button */}
         <TouchableOpacity
           style={styles.searchButton}
           onPress={handleSearchPress}
@@ -263,7 +282,6 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Loading indicator */}
       {isProcessing && (
         <View style={styles.processingContainer}>
           <ActivityIndicator size="small" color="#0000ff" />
@@ -271,7 +289,6 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
         </View>
       )}
 
-      {/* Error message */}
       {processingError && (
         <Text style={styles.errorText}>{processingError}</Text>
       )}
@@ -282,19 +299,26 @@ const DestinationSearch: React.FC<DestinationSearchProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
+    position: "relative",
+    zIndex: 9999,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     position: "relative",
-    zIndex: 20,
+    zIndex: 9999,
   },
   input: {
-    height: 40,
+    height: 46,
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 23,
     paddingHorizontal: 16,
     fontSize: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   searchButton: {
     position: "absolute",

@@ -5,18 +5,12 @@ export default function GroupLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerBackTitle: "Back",
         headerTitleAlign: "center",
       }}
     >
-      <Stack.Screen
-        name="[code]/index"
-        options={{
-          title: "Group Details",
-          animation: "slide_from_right",
-        }}
-      />
+      
     </Stack>
   );
 }

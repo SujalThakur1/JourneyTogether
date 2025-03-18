@@ -11,10 +11,16 @@ import { useColors } from "../../contexts/ColorContext";
 import { PAST_TRIPS, MENU_ITEMS } from "./types";
 import TripCard from "./TripCard";
 import EmptyState from "./EmptyState";
+import { useBottomSheet } from "../../app/(tabs)/history";
 
 export default function PastTripsTab() {
   const [showFilter, setShowFilter] = useState(false);
   const colors = useColors();
+  const { openBottomSheet } = useBottomSheet();
+
+  const handleExploreTrips = () => {
+    openBottomSheet("New Adventure", 1);
+  };
 
   return (
     <ScrollView
@@ -76,6 +82,7 @@ export default function PastTripsTab() {
           title="Looking for More Adventures?"
           description="Explore our curated trips and create unforgettable memories"
           buttonText="Explore Trips"
+          onButtonPress={handleExploreTrips}
         />
       </View>
     </ScrollView>
