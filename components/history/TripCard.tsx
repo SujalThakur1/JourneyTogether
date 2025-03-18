@@ -3,18 +3,23 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Trip } from "./types";
 import { useColors } from "../../contexts/ColorContext";
+import { useRouter } from "expo-router";
 
 interface TripCardProps {
   trip: Trip;
-  onPress?: () => void;
 }
 
-export default function TripCard({ trip, onPress }: TripCardProps) {
+export default function TripCard({ trip }: TripCardProps) {
   const colors = useColors();
+  const router = useRouter();
 
   const handleCreateGroup = () => {
-    // Add your logic here for creating a group, e.g., navigation to a create group screen
     console.log("Create Group button pressed for trip:", trip.title);
+  };
+
+  const handleViewDetails = () => {
+    // Navigate to a details page with the trip ID
+    router.push(`/destination/${trip.id}`);
   };
 
   return (
@@ -87,7 +92,7 @@ export default function TripCard({ trip, onPress }: TripCardProps) {
               </Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onPress}>
+          <TouchableOpacity onPress={handleViewDetails}>
             <View style={styles.detailsLink}>
               <Ionicons
                 name="document-text-outline"
@@ -105,6 +110,7 @@ export default function TripCard({ trip, onPress }: TripCardProps) {
   );
 }
 
+// Styles remain the same
 const styles = StyleSheet.create({
   card: {
     padding: 16,

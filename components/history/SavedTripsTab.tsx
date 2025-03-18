@@ -63,7 +63,6 @@ export default function SavedTripsTab() {
   }, [user]);
 
   const handleCreateGroup = () => {
-    // Add your logic here for creating a group, e.g., navigation to a create group screen
     console.log("Create Group button pressed");
   };
 
