@@ -11,13 +11,12 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CustomMarkerData } from "./CustomMapMarker";
-import { nanoid } from "nanoid";
+import { CustomMarker } from "../../types/group";
 
 interface CustomMapMarkerFormProps {
   visible: boolean;
   onClose: () => void;
-  onAddMarker: (marker: CustomMarkerData) => void;
+  onAddMarker: (marker: Omit<CustomMarker, "id" | "userId">) => void;
   locationCoordinates: { latitude: number; longitude: number };
   username: string;
   textColor: string;
@@ -53,8 +52,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
     setError(null);
 
     try {
-      const newMarker: CustomMarkerData = {
-        id: nanoid(), // Generate a unique ID
+      const newMarker: Omit<CustomMarker, "id" | "userId"> = {
         latitude: locationCoordinates.latitude,
         longitude: locationCoordinates.longitude,
         title: title.trim(),

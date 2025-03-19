@@ -9,21 +9,12 @@ import {
 } from "react-native";
 import { Marker, Callout } from "react-native-maps";
 import { MaterialIcons } from "@expo/vector-icons";
-
-export interface CustomMarkerData {
-  id: string;
-  latitude: number;
-  longitude: number;
-  title: string;
-  description: string;
-  createdBy: string;
-  createdAt: Date;
-}
+import { CustomMarker } from "../../types/group";
 
 interface CustomMapMarkerProps {
-  marker: CustomMarkerData;
-  onEdit?: (marker: CustomMarkerData) => void;
-  onDelete?: (markerId: string) => void;
+  marker: CustomMarker;
+  onEdit?: (marker: CustomMarker) => void;
+  onDelete?: (markerId: string, userId: string) => void;
   isCurrentUserCreator: boolean;
   isDark: boolean;
 }
@@ -123,7 +114,9 @@ const CustomMapMarker: React.FC<CustomMapMarkerProps> = ({
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      onPress={() => onDelete && onDelete(marker.id)}
+                      onPress={() =>
+                        onDelete && onDelete(marker.id, marker.userId)
+                      }
                     >
                       <MaterialIcons name="delete" size={18} color="#EF4444" />
                     </TouchableOpacity>

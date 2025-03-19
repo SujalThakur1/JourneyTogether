@@ -90,7 +90,11 @@ const GroupMapScreen = () => {
     deleteMarker,
     showMarkerFormAtLocation,
     closeMarkerForm,
-  } = useMapMarkers(userDetails?.username || "");
+  } = useMapMarkers(
+    userDetails?.username || "",
+    userDetails?.id || "",
+    group?.group_id || 0
+  );
 
   const {
     journeyState,
@@ -391,14 +395,20 @@ const GroupMapScreen = () => {
   };
 
   const fitToMarkers = () => {
-    if (!mapRef.current || membersWithLocations.length === 0) return;
+    if (
+      !mapRef.current ||
+      (membersWithLocations.length === 0 &&
+        !destination &&
+        markers.length === 0)
+    )
+      return;
 
-    const markers = [];
+    const coordinatesToFit = [];
 
     // Add members with locations
     const validMembers = membersWithLocations.filter((m) => m.location);
     if (validMembers.length > 0) {
-      markers.push(
+      coordinatesToFit.push(
         ...validMembers.map((m) => ({
           latitude: m.location!.latitude,
           longitude: m.location!.longitude,
@@ -408,7 +418,7 @@ const GroupMapScreen = () => {
 
     // Add destination if exists
     if (destination) {
-      markers.push({
+      coordinatesToFit.push({
         latitude: destination.latitude,
         longitude: destination.longitude,
       });
@@ -416,7 +426,7 @@ const GroupMapScreen = () => {
 
     // Add custom markers
     if (markers.length > 0) {
-      markers.push(
+      coordinatesToFit.push(
         ...markers.map((m) => ({
           latitude: m.latitude,
           longitude: m.longitude,
@@ -424,8 +434,8 @@ const GroupMapScreen = () => {
       );
     }
 
-    if (markers.length > 0) {
-      mapRef.current.fitToCoordinates(markers, {
+    if (coordinatesToFit.length > 0) {
+      mapRef.current.fitToCoordinates(coordinatesToFit, {
         edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
         animated: true,
       });
@@ -486,6 +496,20 @@ const GroupMapScreen = () => {
     } catch (error) {
       console.error("Error refreshing group data:", error);
     }
+  };
+
+  const goToUserLocation = () => {
+    if (!userLocation || !mapRef.current) return;
+
+    mapRef.current.animateToRegion(
+      {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      500
+    );
   };
 
   // Render state components
@@ -562,6 +586,7 @@ const GroupMapScreen = () => {
           }
           onToggleMembersList={() => setShowMembersList(true)}
           onToggleFollowMode={handleToggleFollowMode}
+          onGoToMyLocation={goToUserLocation}
           isFollowingActive={isFollowingActive}
           pendingRequestsCount={pendingCount}
           onShowPendingRequests={() => setShowPendingRequests(true)}
@@ -647,6 +672,7 @@ const GroupMapScreen = () => {
             members={membersWithLocations}
             leaderId={group.leader_id}
             currentUserId={userDetails?.id || ""}
+            destination={destination}
             textColor={textColor}
             cardBgColor={cardBgColor}
             onMemberSelect={handleMemberSelect}

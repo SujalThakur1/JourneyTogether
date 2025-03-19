@@ -23,7 +23,7 @@ interface GroupMapProps {
   isDark: boolean;
   onMapPress: (event: any) => void;
   onMarkerEdit: (marker: CustomMarker) => void;
-  onMarkerDelete: (markerId: string) => void;
+  onMarkerDelete: (markerId: string, userId: string) => void;
   onMapReady: () => void;
   mapRef: React.RefObject<MapView>;
 }
@@ -71,6 +71,8 @@ const GroupMap: React.FC<GroupMapProps> = ({
       <MemberMarkers
         members={members}
         followedMemberId={journeyState.followedMemberId}
+        destination={destination}
+        isDark={isDark}
       />
 
       {/* Custom markers added by users */}

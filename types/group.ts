@@ -68,6 +68,7 @@ export interface CustomMarker {
   description: string;
   createdBy: string;
   createdAt: Date;
+  userId: string;
 }
 
 export interface JourneyState {

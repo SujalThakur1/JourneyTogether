@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Manual">
+  <wpt lat="51.4710" lon="-0.4890">
+    <time>2025-03-19T15:00:00Z</time>
+  </wpt>
+  <wpt lat="51.4770" lon="-0.4550">
+    <time>2025-03-19T15:00:30Z</time>
+  </wpt>
+  <wpt lat="51.4850" lon="-0.4210">
+    <time>2025-03-19T15:01:00Z</time>
+  </wpt>
+  <wpt lat="51.4920" lon="-0.3870">
+    <time>2025-03-19T15:01:30Z</time>
+  </wpt>
+</gpx>

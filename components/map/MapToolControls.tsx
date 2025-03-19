@@ -7,6 +7,7 @@ interface MapToolControlsProps {
   onAddMarker: () => void;
   onToggleMembersList: () => void;
   onToggleFollowMode: () => void;
+  onGoToMyLocation: () => void;
   isFollowingActive: boolean;
   pendingRequestsCount: number;
   onShowPendingRequests: () => void;
@@ -21,6 +22,7 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
   onAddMarker,
   onToggleMembersList,
   onToggleFollowMode,
+  onGoToMyLocation,
   isFollowingActive,
   pendingRequestsCount,
   onShowPendingRequests,
@@ -36,6 +38,13 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
         onPress={onFitMarkers}
       >
         <MaterialIcons name="my-location" size={22} color={textColor} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { borderColor }]}
+        onPress={onGoToMyLocation}
+      >
+        <MaterialIcons name="near-me" size={22} color={textColor} />
       </TouchableOpacity>
 
       <TouchableOpacity

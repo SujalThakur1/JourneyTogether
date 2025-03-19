@@ -1,114 +1,156 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Marker, Callout } from "react-native-maps";
+import { MaterialIcons } from "@expo/vector-icons";
 import { MemberWithLocation } from "../../types/group";
 
 interface MemberMarkersProps {
   members: MemberWithLocation[];
   followedMemberId?: string;
+  destination?: { latitude: number; longitude: number } | null;
+  isDark: boolean;
 }
 
 const MemberMarkers: React.FC<MemberMarkersProps> = ({
   members,
   followedMemberId,
+  destination,
+  isDark,
 }) => {
-  // Helper function to get member initials
-  const getInitials = (name: string) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
+  // Filter out members without location data
+  const membersWithLocation = members.filter((member) => member.location);
+
+  // Calculate distance in kilometers between two coordinates
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+        Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in km
+    return distance;
   };
+
+  const deg2rad = (deg: number): number => {
+    return deg * (Math.PI / 180);
+  };
+
+  const getDistanceText = (memberLocation: any) => {
+    if (!destination) return null;
+
+    try {
+      const distance = calculateDistance(
+        memberLocation.latitude,
+        memberLocation.longitude,
+        destination.latitude,
+        destination.longitude
+      );
+
+      if (distance < 1) {
+        return `${Math.round(distance * 1000)} m from destination`;
+      } else {
+        return `${distance.toFixed(1)} km from destination`;
+      }
+    } catch (error) {
+      console.error("Error calculating distance:", error);
+      return null;
+    }
+  };
+
+  const bgColor = isDark ? "#374151" : "#FFFFFF";
+  const textColor = isDark ? "#F3F4F6" : "#1F2937";
+  const borderColor = isDark ? "#4B5563" : "#E5E7EB";
 
   return (
     <>
-      {members.map((member) =>
-        member.location ? (
+      {membersWithLocation.map((member) => {
+        if (!member.location) return null;
+
+        const isFollowed = member.id === followedMemberId;
+        const isCurrentUser = member.isCurrentUser;
+        const distanceText = destination
+          ? getDistanceText(member.location)
+          : null;
+
+        return (
           <Marker
             key={member.id}
             coordinate={{
               latitude: member.location.latitude,
               longitude: member.location.longitude,
             }}
-            pinColor={
-              member.id === followedMemberId
-                ? "gold" // Following this member
-                : member.isLeader
-                ? "orange" // Leader
-                : member.isCurrentUser
-                ? "blue" // Current user
-                : "green" // Other member
-            }
+            pinColor={isFollowed ? "blue" : isCurrentUser ? "red" : "green"}
+            title={member.username}
           >
-            <View style={styles.markerAvatarContainer}>
+            <Callout tooltip>
               <View
                 style={[
-                  styles.markerAvatar,
-                  {
-                    backgroundColor:
-                      member.id === followedMemberId
-                        ? "#F59E0B" // Amber
-                        : member.isLeader
-                        ? "#FBBF24" // Yellow
-                        : member.isCurrentUser
-                        ? "#3B82F6" // Blue
-                        : "#22C55E", // Green
-                    borderColor: "white",
-                  },
+                  styles.callout,
+                  { backgroundColor: bgColor, borderColor },
                 ]}
               >
-                <Text style={styles.markerAvatarText}>
-                  {getInitials(member.username)}
+                <Text style={[styles.calloutTitle, { color: textColor }]}>
+                  {member.username}
+                  {member.isLeader && " (Leader)"}
+                  {isCurrentUser && " (You)"}
                 </Text>
-              </View>
-            </View>
-            <Callout>
-              <View style={styles.callout}>
-                <Text style={styles.calloutTitle}>{member.username}</Text>
-                <Text style={styles.calloutSubtitle}>
-                  {member.isLeader ? "Group Leader" : "Member"}
-                  {member.isCurrentUser ? " (You)" : ""}
-                  {member.id === followedMemberId ? " (Following)" : ""}
-                </Text>
+
+                <View style={styles.statusRow}>
+                  <MaterialIcons name="access-time" size={14} color="#22C55E" />
+                  <Text style={styles.statusText}>Online</Text>
+                </View>
+
+                {distanceText && (
+                  <View style={styles.statusRow}>
+                    <MaterialIcons name="place" size={14} color="#F59E0B" />
+                    <Text style={styles.distanceText}>{distanceText}</Text>
+                  </View>
+                )}
               </View>
             </Callout>
           </Marker>
-        ) : null
-      )}
+        );
+      })}
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  markerAvatarContainer: {
-    alignItems: "center",
-  },
-  markerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-  },
-  markerAvatarText: {
-    color: "white",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   callout: {
-    padding: 8,
-    width: 150,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 150,
   },
   calloutTitle: {
-    fontWeight: "bold",
+    fontWeight: "600",
     fontSize: 14,
+    marginBottom: 6,
   },
-  calloutSubtitle: {
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+  },
+  statusText: {
     fontSize: 12,
-    color: "#6B7280",
+    color: "#22C55E",
+    marginLeft: 4,
+  },
+  distanceText: {
+    fontSize: 12,
+    color: "#F59E0B",
+    marginLeft: 4,
   },
 });
 
