@@ -9,17 +9,17 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DestinationsSection } from "../../components/DestinationsSection/index";
-import { TopDestinationsSection } from "../../components/TopDestinationsSection/index";
-import { useApp } from "../../contexts/AppContext";
-import { useColors } from "../../contexts/ColorContext";
-import DestinationSearch from "../../components/DestinationSearch/index";
-import SearchResults from "../../components/DestinationSearch/SearchResults";
-import { supabase } from "../../lib/supabase";
+import { DestinationsSection } from "@/components/Home/DestinationsSection/index";
+import { TopDestinationsSection } from "@/components/Home/TopDestinationsSection/index";
+import { useApp } from "@/contexts/AppContext";
+import { useColors } from "@/contexts/ColorContext";
+import DestinationSearch from "@/components/Home/DestinationSearch/index";
+import SearchResults from "@/components/Home/DestinationSearch/SearchResults";
+import { supabase } from "@/lib/supabase";
 import axios from "axios";
 import { useRouter } from "expo-router";
-import NotificationsList from "../../components/Notifications/NotificationsList";
-import NotificationBadge from "../../components/Notifications/NotificationBadge";
+import NotificationsList from "@/components/Notifications/NotificationsList";
+import NotificationBadge from "@/components/Notifications/NotificationBadge";
 
 interface Destination {
   destination_id: number;

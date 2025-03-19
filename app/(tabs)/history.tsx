@@ -1,11 +1,17 @@
 import React, { useState, createContext, useContext } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "../../contexts/ColorContext";
 import PastTripsTab from "../../components/history/PastTripsTab";
 import SavedTripsTab from "../../components/history/SavedTripsTab";
 import { UserProvider } from "../../contexts/UserContext";
-import CreateGroupBottomSheet from "../../components/Destination/bottomSheet";
+import CreateGroupBottomSheet from "../../components/Sheet/bottomSheet";
 
 // Create a context for handling bottom sheet state across components
 interface BottomSheetContextType {

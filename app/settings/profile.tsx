@@ -7,15 +7,15 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useApp } from "../../contexts/AppContext";
-import { supabase } from "../../lib/supabase";
+import { useApp } from "@/contexts/AppContext";
+import { supabase } from "@/lib/supabase";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { TextInput as PaperTextInput } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
-import Avatar from "../../components/Avatar";
-import { useColorModeContext } from "../../contexts/ColorModeContext";
+import Avatar from "@/components/Account/Avatar";
+import { useColorModeContext } from "@/contexts/ColorModeContext";
 
 export default function ProfileSettings() {
   const router = useRouter();

@@ -304,7 +304,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
         resetGroupForms();
 
         router.push({
-          pathname: "/group/[code]",
+          pathname: "/map/[code]",
           params: { code: groupCode.toUpperCase() },
         });
         return;
@@ -327,7 +327,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       await fetchUserGroups();
 
       router.push({
-        pathname: "/group/[code]",
+        pathname: "/map/[code]",
         params: { code: groupCode.toUpperCase() },
       });
 
@@ -432,7 +432,7 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
       await fetchUserGroups();
 
       router.push({
-        pathname: "/group/[code]",
+        pathname: "/map/[code]",
         params: { code: newGroupCode },
       });
 

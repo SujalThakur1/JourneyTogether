@@ -23,7 +23,7 @@ import { useGroups } from "../../contexts/GroupsContext";
 import { supabase } from "../../lib/supabase";
 import MapView, { Marker } from "react-native-maps";
 import { ToastManager } from "../components/ui/toast";
-import CreateGroupBottomSheet from "../../components/Destination/bottomSheet";
+import CreateGroupBottomSheet from "../../components/Sheet/bottomSheet";
 
 const { width } = Dimensions.get("window");
 
