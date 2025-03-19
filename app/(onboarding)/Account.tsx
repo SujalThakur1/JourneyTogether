@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   Text as RNText,
 } from "react-native";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { Session } from "@supabase/supabase-js";
-import { useColors } from "../../contexts/ColorContext";
+import { useColors } from "@/contexts/ColorContext";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -21,14 +21,14 @@ import {
   Surface,
 } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import Avatar from "../../components/Avatar";
+import Avatar from "@/components/Account/Avatar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useApp } from "../../contexts/AppContext";
+import { useApp } from "@/contexts/AppContext";
 import {
   requestLocationPermission,
   checkAndRequestLocationPermission,
-} from "../../lib/locationService";
+} from "@/lib/locationService";
 import Toast from "react-native-toast-message";
 
 export default function Account() {

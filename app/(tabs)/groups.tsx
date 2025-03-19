@@ -11,13 +11,13 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useGroups, Group } from "../../contexts/GroupsContext";
-import { useApp } from "../../contexts/AppContext";
-import GroupCard from "../../components/groups/GroupCard";
-import EmptyGroupState from "../../components/groups/EmptyGroupState";
-import GroupSearchBar from "../../components/groups/GroupSearchBar";
-import FilterModal from "../../components/groups/FilterModal";
-import StandaloneBottomSheets from "../../components/groups/StandaloneBottomSheets";
+import { useGroups, Group } from "@/contexts/GroupsContext";
+import { useApp } from "@/contexts/AppContext";
+import GroupCard from "@/components/groups/groupPage/GroupCard";
+import EmptyGroupState from "@/components/groups/groupPage/EmptyGroupState";
+import GroupSearchBar from "@/components/groups/groupPage/GroupSearchBar";
+import FilterModal from "@/components/groups/groupPage/FilterModal";
+import StandaloneBottomSheets from "@/components/Sheet/StandaloneBottomSheets";
 import { useFocusEffect } from "@react-navigation/native";
 
 const GroupsScreen = () => {

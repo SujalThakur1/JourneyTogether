@@ -9,14 +9,17 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DestinationsSection } from "../../components/DestinationsSection/index";
-import { TopDestinationsSection } from "../../components/TopDestinationsSection/index";
-import { useApp } from "../../contexts/AppContext";
-import { useColors } from "../../contexts/ColorContext";
-import DestinationSearch from "../../components/DestinationSearch/index";
-import SearchResults from "../../components/DestinationSearch/SearchResults";
-import { supabase } from "../../lib/supabase";
+import { DestinationsSection } from "@/components/Home/DestinationsSection/index";
+import { TopDestinationsSection } from "@/components/Home/TopDestinationsSection/index";
+import { useApp } from "@/contexts/AppContext";
+import { useColors } from "@/contexts/ColorContext";
+import DestinationSearch from "@/components/Home/DestinationSearch/index";
+import SearchResults from "@/components/Home/DestinationSearch/SearchResults";
+import { supabase } from "@/lib/supabase";
 import axios from "axios";
+import { useRouter } from "expo-router";
+import NotificationsList from "@/components/Notifications/NotificationsList";
+import NotificationBadge from "@/components/Notifications/NotificationBadge";
 
 interface Destination {
   destination_id: number;
@@ -31,14 +34,29 @@ interface Destination {
 }
 
 export default function DiscoverScreen() {
-  const { categories, isLoading, selectedCategory, setSelectedCategory } =
-    useApp();
+  const {
+    categories,
+    isLoading,
+    selectedCategory,
+    setSelectedCategory,
+    notificationCount,
+    fetchNotificationCount,
+  } = useApp();
   const colors = useColors();
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState<Destination[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const router = useRouter();
+  const { userDetails, userUpdated, setUserUpdated } = useApp();
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (userDetails === null && !userUpdated) {
+      setUserUpdated(true);
+    }
+  }, [userDetails, userUpdated, setUserUpdated]);
 
   // Animation setup for loading spinner
   const [spinValue] = useState(new Animated.Value(0));
@@ -98,7 +116,6 @@ export default function DiscoverScreen() {
         // If no results from Supabase, try to get from Google Places API
         await searchGooglePlaces(query);
       }
-      
     } catch (error) {
       console.error("Error in searchDestinations:", error);
       setSearchResults([]);
@@ -189,6 +206,23 @@ export default function DiscoverScreen() {
     searchDestinations(query);
   };
 
+  // Refresh notification count when the screen comes into focus
+  useEffect(() => {
+    fetchNotificationCount();
+  }, []);
+
+  // Handle notification icon press
+  const handleNotificationPress = () => {
+    setShowNotifications(true);
+  };
+
+  // Handle notification modal close
+  const handleNotificationClose = () => {
+    setShowNotifications(false);
+    // Refresh the notification count after interaction
+    fetchNotificationCount();
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.bgColor }]}
@@ -206,12 +240,16 @@ export default function DiscoverScreen() {
               >
                 <Ionicons name="search" size={24} color={colors.iconColor} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handleNotificationPress}
+              >
                 <Ionicons
                   name="notifications-outline"
                   size={24}
                   color={colors.iconColor}
                 />
+                <NotificationBadge count={notificationCount} />
               </TouchableOpacity>
             </View>
           </>
@@ -236,6 +274,27 @@ export default function DiscoverScreen() {
           </View>
         )}
       </View>
+
+      {/* Notifications Modal */}
+      <NotificationsList
+        visible={showNotifications}
+        onClose={handleNotificationClose}
+      />
+
+      {/* Search Results overlay */}
+      {showSearch && hasSearched && (
+        <View style={styles.searchResultsOverlay}>
+          <SearchResults
+            destinations={searchResults}
+            isLoading={isSearching}
+            onDestinationPress={(destination) => {
+              handleCloseSearch();
+              // Navigate to the destination
+              router.push(`/destination/${destination.destination_id}`);
+            }}
+          />
+        </View>
+      )}
 
       {!showSearch && (
         <View>
@@ -274,12 +333,13 @@ export default function DiscoverScreen() {
       )}
 
       {showSearch && hasSearched ? (
-        <View style={styles.searchResultsContainer}>
-          <SearchResults
-            destinations={searchResults}
-            isLoading={isSearching}
-            emptyMessage={`No destinations found for "${searchText}"`}
-          />
+        <View style={styles.contentWhenSearching}>
+          {/* We don't need to show search results here anymore as they are in the overlay */}
+          <Text
+            style={[styles.searchingText, { color: colors.mutedTextColor }]}
+          >
+            Browse through search results above
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -325,37 +385,50 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 5,
-    marginHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 8,
+    zIndex: 999,
   },
   heading: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "700",
   },
   headerIcons: {
     flexDirection: "row",
-    alignItems: "center",
   },
   iconButton: {
     marginLeft: 16,
+    padding: 8,
   },
   searchContainer: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    width: "100%",
+    paddingHorizontal: 16,
+    zIndex: 50,
   },
   backButton: {
-    marginRight: 8,
+    marginRight: 12,
+    padding: 4,
   },
   searchInputContainer: {
     flex: 1,
+    zIndex: 50,
   },
-  searchResultsContainer: {
-    flex: 1,
+  searchResultsOverlay: {
+    position: "absolute",
+    top: 130, // Adjust based on your header height
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.02)",
+    zIndex: 40,
     paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.05)",
   },
   categoriesContainer: {
     paddingHorizontal: 5,
@@ -387,5 +460,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: "500",
+  },
+  contentWhenSearching: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: 40,
+  },
+  searchingText: {
+    fontSize: 16,
+    opacity: 0.7,
   },
 });

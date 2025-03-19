@@ -39,6 +39,7 @@ interface ThemeColors {
   successColor: string;
   warningColor: string;
   infoColor: string;
+  errorColor: string;
 
   // Text variants
   subTextColor: string;
@@ -132,6 +133,7 @@ export function ColorProvider({ children }: { children: React.ReactNode }) {
     successColor: isDark ? "#10B981" : "#059669",
     warningColor: isDark ? "#F59E0B" : "#D97706",
     infoColor: isDark ? "#3B82F6" : "#2563EB",
+    errorColor: "#F44336",
 
     // Text variants
     subTextColor: isDark ? "#9CA3AF" : "#6B7280",
