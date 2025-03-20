@@ -24,6 +24,7 @@
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@rneui/themed": "^4.0.0-rc.8",
+    "@stream-io/video-react-native-sdk": "^1.10.16",
     "@supabase/supabase-js": "^2.49.1",
     "axios": "^1.8.3",
     "date-fns": "^4.1.0",
@@ -60,6 +61,8 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
+    "stream-chat": "^8.57.6",
+    "stream-chat-expo": "^6.7.0",
     "yup": "^1.6.1"
   },
   "devDependencies": {

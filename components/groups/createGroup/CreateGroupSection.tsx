@@ -173,7 +173,10 @@ const CreateGroupSection: React.FC<CreateGroupSectionProps> = ({ onClose }) => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.bgColor }]}>
+    <ScrollView
+      keyboardShouldPersistTaps="always"
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
       <View style={styles.headerContainer}>
         <Text style={[styles.header, { color: colors.textColor }]}>
           Create New Group

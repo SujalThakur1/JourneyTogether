@@ -56,7 +56,7 @@ const CustomMapMarker: React.FC<CustomMapMarkerProps> = ({
         latitude: marker.latitude,
         longitude: marker.longitude,
       }}
-      pinColor="purple"
+      pinColor="#10B981"
     >
       <Callout tooltip>
         <View

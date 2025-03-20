@@ -76,6 +76,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
   };
 
   const handleCancel = () => {
+    // Reset form
     setTitle("");
     setDescription("");
     setError(null);
@@ -141,9 +142,10 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
             </View>
 
             <View style={styles.locationInfo}>
-              <MaterialIcons name="location-on" size={20} color={textColor} />
+              <MaterialIcons name="place" size={20} color={textColor} />
               <Text style={[styles.locationText, { color: textColor }]}>
-                Lat: {locationCoordinates.latitude.toFixed(6)}, Lng:{" "}
+                Selected Location - Lat:{" "}
+                {locationCoordinates.latitude.toFixed(6)}, Lng:{" "}
                 {locationCoordinates.longitude.toFixed(6)}
               </Text>
             </View>

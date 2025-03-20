@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View, StyleSheet, Modal } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Modal,
+  Alert,
+  TouchableOpacity,
+  Text,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView from "react-native-maps";
+import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../../lib/supabase";
 import { useApp } from "../../../contexts/AppContext";
 import {
@@ -30,7 +38,12 @@ import JoinGroupButton from "../../../components/groups/joinGroup/JoinGroupButto
 import CustomMapMarkerForm from "../../../components/map/CustomMapMarkerForm";
 
 // Types
-import { Group, MemberWithLocation, Region } from "../../../types/group";
+import {
+  Group,
+  MemberWithLocation,
+  Region,
+  CustomMarker,
+} from "../../../types/group";
 
 const GroupMapScreen = () => {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -57,6 +70,7 @@ const GroupMapScreen = () => {
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isFollowingActive, setIsFollowingActive] = useState(false);
+  const [isMarkerModeActive, setIsMarkerModeActive] = useState(false);
 
   // Colors
   const bgColor = isDark ? "#1F2937" : "white";
@@ -458,12 +472,26 @@ const GroupMapScreen = () => {
     setShowMembersList(false);
   };
 
+  // Create a temporary marker at the tapped location
   const handleMapPress = (event: any) => {
-    // Only allow adding markers if user is a member
-    if (isUserMember() && event.nativeEvent.action === "press") {
-      const { coordinate } = event.nativeEvent;
-      showMarkerFormAtLocation(coordinate.latitude, coordinate.longitude);
+    // Only handle map press if marker mode is active
+    if (isUserMember() && isMarkerModeActive) {
+      const coordinate = event.nativeEvent.coordinate;
+
+      if (coordinate) {
+        console.log("Adding marker at:", coordinate);
+
+        // Show the form to edit the marker details
+        showMarkerFormAtLocation(coordinate.latitude, coordinate.longitude);
+      } else {
+        console.error("No coordinate found in map press event");
+      }
     }
+  };
+
+  const handleMapLongPress = (event: any) => {
+    // Delegate to regular press handler
+    handleMapPress(event);
   };
 
   const handleToggleFollowMode = () => {
@@ -512,6 +540,25 @@ const GroupMapScreen = () => {
     );
   };
 
+  // Handle map ready event
+  const handleMapReady = () => {
+    setIsMapReady(true);
+  };
+
+  // Toggle marker mode
+  const toggleMarkerMode = () => {
+    const newMode = !isMarkerModeActive;
+    setIsMarkerModeActive(newMode);
+    // No alert is displayed anymore
+  };
+
+  // Wrap the closeMarkerForm to also turn off marker mode
+  const handleCloseMarkerForm = () => {
+    // If user exits without saving, marker won't be created
+    closeMarkerForm();
+    setIsMarkerModeActive(false);
+  };
+
   // Render state components
   if (loading || error || !group) {
     return (
@@ -545,23 +592,11 @@ const GroupMapScreen = () => {
           backgroundColor={bgColor}
         />
 
-        {/* Group Stats */}
-        <GroupStats
-          group={group}
-          onlineCount={membersWithLocations.filter((m) => m.location).length}
-          pendingCount={pendingCount}
-          showPending={isUserLeader()}
-          textColor={textColor}
-          bgColor={cardBgColor}
-          borderColor={borderColor}
-        />
-
         {/* Map View */}
         {initialRegion && (
           <GroupMap
             mapRef={mapRef}
             initialRegion={initialRegion}
-            members={membersWithLocations}
             destination={destination}
             currentUserId={userDetails?.id || ""}
             customMarkers={markers}
@@ -569,32 +604,41 @@ const GroupMapScreen = () => {
             mapStyle={mapStyle}
             isDark={isDark}
             onMapPress={handleMapPress}
+            onMapLongPress={handleMapLongPress}
             onMarkerEdit={editMarker}
             onMarkerDelete={deleteMarker}
-            onMapReady={() => setIsMapReady(true)}
+            onMapReady={handleMapReady}
+            members={membersWithLocations}
           />
         )}
 
         {/* Map Tool Controls */}
         <MapToolControls
           onFitMarkers={fitToMarkers}
-          onAddMarker={() =>
-            showMarkerFormAtLocation(
-              initialRegion?.latitude || 0,
-              initialRegion?.longitude || 0
-            )
-          }
+          onAddMarker={toggleMarkerMode}
+          isMarkerModeActive={isMarkerModeActive}
           onToggleMembersList={() => setShowMembersList(true)}
           onToggleFollowMode={handleToggleFollowMode}
           onGoToMyLocation={goToUserLocation}
           isFollowingActive={isFollowingActive}
-          pendingRequestsCount={pendingCount}
-          onShowPendingRequests={() => setShowPendingRequests(true)}
-          isLeader={isUserLeader()}
+          pendingRequestsCount={0} // Hide pending requests indicator
+          onShowPendingRequests={() => {}} // Disabled
+          isLeader={false} // Disable leader-specific controls
           textColor={textColor}
           borderColor={borderColor}
           bgColor={cardBgColor}
         />
+
+        {/* Marker Mode Indicator */}
+        {isMarkerModeActive && (
+          <View
+            style={[styles.markerModeIndicator, { backgroundColor: "#10B981" }]}
+          >
+            <Text style={styles.markerModeText}>
+              Tap anywhere on the map to add a marker
+            </Text>
+          </View>
+        )}
 
         {/* Route Info Card */}
         <RouteInfo
@@ -699,20 +743,18 @@ const GroupMapScreen = () => {
           />
         </Modal>
 
-        {/* Custom Marker Form */}
-        {markerLocation && (
-          <CustomMapMarkerForm
-            visible={showAddMarkerForm}
-            onClose={closeMarkerForm}
-            onAddMarker={addMarker}
-            locationCoordinates={markerLocation}
-            username={userDetails?.username || "Unknown"}
-            textColor={textColor}
-            bgColor={bgColor}
-            borderColor={borderColor}
-            buttonColor={buttonColor}
-          />
-        )}
+        {/* Marker Form */}
+        <CustomMapMarkerForm
+          visible={showAddMarkerForm}
+          onClose={handleCloseMarkerForm}
+          onAddMarker={addMarker}
+          locationCoordinates={markerLocation || { latitude: 0, longitude: 0 }}
+          username={userDetails?.username || ""}
+          textColor={textColor}
+          bgColor={bgColor}
+          borderColor={borderColor}
+          buttonColor={buttonColor}
+        />
       </View>
     </SafeAreaView>
   );
@@ -721,6 +763,24 @@ const GroupMapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  markerModeIndicator: {
+    position: "absolute",
+    top: 150,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  markerModeText: {
+    color: "white",
+    fontWeight: "500",
   },
 });
 

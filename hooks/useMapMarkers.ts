@@ -20,6 +20,9 @@ export const useMapMarkers = (
     longitude: number;
   } | null>(null);
 
+  // Temporary marker ID for visual feedback before saving
+  const [tempMarker, setTempMarker] = useState<CustomMarker | null>(null);
+
   // Fetch markers from the database
   useEffect(() => {
     const fetchMarkers = async () => {
@@ -47,6 +50,7 @@ export const useMapMarkers = (
             createdAt: new Date(item.marked_at),
             userId: item.user_id,
           }));
+
           setMarkers(formattedMarkers);
         }
       } catch (error) {
@@ -102,6 +106,9 @@ export const useMapMarkers = (
           Alert.alert("Error", "Failed to add marker. Please try again.");
           return;
         }
+
+        // Clear temporary marker
+        setTempMarker(null);
 
         // Marker will be added to state via the real-time subscription
       } catch (error) {
@@ -195,23 +202,43 @@ export const useMapMarkers = (
     [groupId, userId]
   );
 
-  // Show marker form at current location
+  // Show marker form at selected location with temporary visual marker
   const showMarkerFormAtLocation = useCallback(
     (latitude: number, longitude: number) => {
+      // Create a temporary marker for immediate visual feedback
+      const newTempMarker: CustomMarker = {
+        id: "temp-" + Date.now(),
+        userId: userId,
+        latitude,
+        longitude,
+        title: "New Marker",
+        description: "",
+        createdBy: username,
+        createdAt: new Date(),
+      };
+
+      // Show the temporary marker
+      setTempMarker(newTempMarker);
+
+      // Set location and show form
       setMarkerLocation({ latitude, longitude });
       setShowAddMarkerForm(true);
     },
-    []
+    [userId, username]
   );
 
-  // Close marker form
+  // Close marker form and remove temporary marker
   const closeMarkerForm = useCallback(() => {
     setShowAddMarkerForm(false);
     setMarkerLocation(null);
+    setTempMarker(null); // Remove temporary marker if user cancels
   }, []);
 
+  // All markers including temporary ones for display
+  const allMarkers = tempMarker ? [...markers, tempMarker] : markers;
+
   return {
-    markers,
+    markers: allMarkers, // Include temporary marker for visual feedback
     showAddMarkerForm,
     markerLocation,
     addMarker,

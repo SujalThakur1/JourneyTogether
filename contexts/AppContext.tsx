@@ -31,7 +31,6 @@ export const CACHE_KEYS = {
 
 // Cache durations
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds for other data
-const USER_CACHE_DURATION = 24 * 60 * 60 * 1000; // 1 hour in milliseconds for users
 
 // Define the context interface with added users and fetchAllUsers
 interface AppContextType {
@@ -103,15 +102,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return Date.now() - parseInt(timestamp) < CACHE_DURATION;
   }, []);
 
-  // Check if the users cache is valid (within 1 hour)
-  const isUsersCacheValid = useCallback(async () => {
-    const timestamp = await AsyncStorage.getItem(
-      CACHE_KEYS.USERS_CACHE_TIMESTAMP
-    );
-    if (!timestamp) return false;
-    return Date.now() - parseInt(timestamp) < USER_CACHE_DURATION;
-  }, []);
-
   // Function to fetch all users, with caching and optional force refresh
   const fetchAllUsers = useCallback(
     async (forceRefresh: boolean = false) => {
@@ -129,13 +119,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (cachedUsers) {
             const parsedUsers = JSON.parse(cachedUsers);
             if (parsedUsers && parsedUsers.length > 0) {
-              // console.log(
-              //   "Using cached users data, count:",
-              //   parsedUsers.length
-              // );
               setUsers(parsedUsers);
               setHasAttemptedFetch(true);
               setIsUsersLoading(false);
+              console.log("users have been fetched from cache");
               return;
             }
           }
@@ -355,6 +342,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .select("*")
           .eq("id", user.id)
           .single();
+        console.log("userData has been fetched", userData);
         if (error) throw error;
         setUserDetails(userData);
       } else {
@@ -501,6 +489,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (userDetails?.id) {
       fetchNotificationCount();
+
+      // Set up a specific real-time listener for notification changes
+      const notificationChannel = supabase
+        .channel(`notification-${userDetails.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "users",
+            filter: `id=eq.${userDetails.id}`,
+          },
+          (payload) => {
+            console.log("User notification update detected:", payload);
+
+            // Directly update notification count from the payload
+            const newUserData = payload.new as any;
+            if (newUserData && newUserData.notification) {
+              console.log(
+                "New notification count:",
+                newUserData.notification.length
+              );
+              setNotificationCount(newUserData.notification.length);
+
+              // Also update the full user details to keep everything in sync
+              setUserDetails((prevDetails: any) => ({
+                ...prevDetails,
+                notification: newUserData.notification,
+              }));
+            } else {
+              fetchNotificationCount(); // Fallback to fetching if payload doesn't have what we need
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(notificationChannel);
+      };
     } else {
       setNotificationCount(0);
     }
