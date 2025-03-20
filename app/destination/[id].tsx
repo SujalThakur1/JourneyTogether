@@ -17,13 +17,13 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import { useColors } from "../../contexts/ColorContext";
-import { useApp } from "../../contexts/AppContext";
-import { useGroups } from "../../contexts/GroupsContext";
-import { supabase } from "../../lib/supabase";
+import { useColors } from "@/contexts/ColorContext";
+import { useApp } from "@/contexts/AppContext";
+import { useGroups } from "@/contexts/GroupsContext";
+import { supabase } from "@/lib/supabase";
 import MapView, { Marker } from "react-native-maps";
-import { ToastManager } from "../components/ui/toast";
-import CreateGroupBottomSheet from "../../components/Sheet/bottomSheet";
+import { ToastManager } from "@/components/ui/toast";
+import CreateGroupBottomSheet from "@/components/Sheet/bottomSheet";
 
 const { width } = Dimensions.get("window");
 

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Custom">
+  <trk>
+    <name>Dundee Freeway Simulation</name>
+    <trkseg>
+      <trkpt lat="56.4620" lon="-2.9707">
+        <time>2025-03-19T17:00:00Z</time>
+      </trkpt>
+      <trkpt lat="56.4610" lon="-3.0100">
+        <time>2025-03-19T17:00:10Z</time>
+      </trkpt>
+      <trkpt lat="56.4710" lon="-3.0400">
+        <time>2025-03-19T17:00:20Z</time>
+      </trkpt>
+      <trkpt lat="56.4800" lon="-3.0700">
+        <time>2025-03-19T17:00:30Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

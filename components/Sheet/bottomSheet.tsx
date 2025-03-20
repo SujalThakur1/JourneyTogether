@@ -9,6 +9,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useColors } from "../../contexts/ColorContext";
@@ -27,6 +29,8 @@ interface CreateGroupBottomSheetProps {
   maxHeight: number;
   mb: number;
 }
+
+const { height: screenHeight } = Dimensions.get("window");
 
 const CreateGroupBottomSheet = ({
   isVisible,
@@ -58,8 +62,31 @@ const CreateGroupBottomSheet = ({
 
   const [localGroupName, setLocalGroupName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Listen for keyboard events
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (isVisible) {
@@ -108,6 +135,9 @@ const CreateGroupBottomSheet = ({
       // for any members that have been added through the addMember function
       await handleCreateGroup();
 
+      // Dismiss keyboard if it's open
+      Keyboard.dismiss();
+
       // Close the bottom sheet
       onClose();
     } catch (error) {
@@ -126,13 +156,21 @@ const CreateGroupBottomSheet = ({
     addMember(user);
   };
 
+  // Determine the actual height based on keyboard visibility
+  const actualMaxHeight = keyboardVisible
+    ? Math.min(screenHeight * 0.9, maxHeight + 200)
+    : maxHeight;
+
   return (
     <>
       {isVisible && (
         <TouchableOpacity
           style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
           activeOpacity={1}
-          onPress={onClose}
+          onPress={() => {
+            Keyboard.dismiss();
+            onClose();
+          }}
         />
       )}
       <Animated.View
@@ -141,7 +179,7 @@ const CreateGroupBottomSheet = ({
           {
             backgroundColor: colors.bgColor,
             transform: [{ translateY }],
-            maxHeight,
+            maxHeight: actualMaxHeight,
           },
         ]}
       >
@@ -153,8 +191,9 @@ const CreateGroupBottomSheet = ({
         />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.content}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 0}
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.textColor }]}>
@@ -165,7 +204,11 @@ const CreateGroupBottomSheet = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.scrollContent}>
+          <ScrollView
+            style={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
             {/* Destination Display */}
             <View style={[styles.section, { borderColor: colors.borderColor }]}>
               <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
@@ -265,6 +308,8 @@ const CreateGroupBottomSheet = ({
               )}
             </TouchableOpacity>
           </View>
+          {/* Extra padding when keyboard is visible */}
+          {keyboardVisible && <View style={{ height: 100 }} />}
         </KeyboardAvoidingView>
       </Animated.View>
     </>

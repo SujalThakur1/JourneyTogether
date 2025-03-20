@@ -69,7 +69,7 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
                   ]}
                 />
                 <View style={styles.content}>
-                  <CreateGroupSection />
+                  <CreateGroupSection onClose={handleCloseCreateSheet} />
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -107,7 +107,7 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
                   ]}
                 />
                 <View style={styles.content}>
-                  <JoinGroupSection />
+                  <JoinGroupSection onClose={handleCloseJoinSheet} />
                 </View>
               </View>
             </TouchableWithoutFeedback>

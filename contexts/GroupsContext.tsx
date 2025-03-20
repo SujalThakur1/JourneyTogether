@@ -431,10 +431,13 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
 
       await fetchUserGroups();
 
-      router.push({
-        pathname: "/map/[code]",
-        params: { code: newGroupCode },
-      });
+      // Use a timeout to allow the bottom sheet to close properly before navigation
+      setTimeout(() => {
+        router.push({
+          pathname: "/map/[code]",
+          params: { code: newGroupCode },
+        });
+      }, 100);
 
       return data;
     } catch (error) {
