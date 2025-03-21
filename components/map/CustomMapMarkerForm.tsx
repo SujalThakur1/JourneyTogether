@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CustomMarker } from "../../types/group";
+import { useColors } from "@/contexts/ColorContext";
 
 interface CustomMapMarkerFormProps {
   visible: boolean;
@@ -36,6 +37,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
   borderColor,
   buttonColor,
 }) => {
+  const color = useColors();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -175,7 +177,9 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
                 {loading ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Add Marker</Text>
+                  <Text style={[styles.saveButtonText, { color: color.buttonTextColor }]}>
+                    Add Marker
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>

@@ -26,9 +26,6 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
   onToggleFollowMode,
   onGoToMyLocation,
   isFollowingActive,
-  pendingRequestsCount,
-  onShowPendingRequests,
-  isLeader,
   textColor,
   borderColor,
   bgColor,
@@ -39,7 +36,7 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
         style={[styles.button, { borderColor }]}
         onPress={onFitMarkers}
       >
-        <MaterialIcons name="my-location" size={22} color={textColor} />
+        <MaterialIcons name="fullscreen" size={22} color={textColor} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -61,7 +58,7 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
           styles.button,
           isMarkerModeActive
             ? styles.activeMarkerButton
-            : styles.addMarkerButton,
+            : "",
           { borderColor },
         ]}
         onPress={onAddMarker}
@@ -117,9 +114,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
-  },
-  addMarkerButton: {
-    backgroundColor: "rgba(52, 211, 153, 0.2)",
   },
   activeMarkerButton: {
     backgroundColor: "#10B981", // Green color to indicate active mode

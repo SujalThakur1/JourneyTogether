@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ios",
+      "bundleIdentifier": "sujal.journey.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow Journey to access your photos to upload images and share your experiences.",
         "NSLocationWhenInUseUsageDescription": "Allow Journey to access your location to show nearby destinations and provide navigation.",

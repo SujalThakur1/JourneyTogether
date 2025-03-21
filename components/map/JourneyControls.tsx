@@ -12,7 +12,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import { MemberWithLocation } from "../../types/group";
-
+import { useColors } from "../../contexts/ColorContext";
 interface JourneyControlsProps {
   groupId: number;
   groupName: string;
@@ -34,13 +34,11 @@ interface JourneyControlsProps {
 
 const JourneyControls: React.FC<JourneyControlsProps> = ({
   groupId,
-  groupName,
   members,
   isLeader,
   isJourneyActive,
   isFollowJourney,
   followedMemberId,
-  destinationId,
   onJourneyStart,
   onJourneyEnd,
   onFollowMember,
@@ -50,6 +48,7 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   borderColor,
   bgColor,
 }) => {
+  const colors = useColors();
   const [showMemberActions, setShowMemberActions] = useState(false);
   const [selectedMember, setSelectedMember] =
     useState<MemberWithLocation | null>(null);
@@ -73,61 +72,6 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   const handleMemberAction = (member: MemberWithLocation) => {
     setSelectedMember(member);
     setShowMemberActions(true);
-  };
-
-  const removeMember = async () => {
-    if (!selectedMember || !isLeader) return;
-
-    try {
-      setLoading(true);
-
-      // Get current group data
-      const { data: groupData, error: groupError } = await supabase
-        .from("groups")
-        .select("group_members")
-        .eq("group_id", groupId)
-        .single();
-
-      if (groupError) throw groupError;
-
-      // Remove member from group_members array
-      const updatedMembers = groupData.group_members.filter(
-        (id: string) => id !== selectedMember.id
-      );
-
-      // Update the group
-      const { error: updateError } = await supabase
-        .from("groups")
-        .update({ group_members: updatedMembers })
-        .eq("group_id", groupId);
-
-      if (updateError) throw updateError;
-
-      Alert.alert(
-        "Success",
-        `${selectedMember.username} has been removed from the group`
-      );
-      onUpdateMembers();
-      setShowMemberActions(false);
-    } catch (error) {
-      console.error("Error removing member:", error);
-      Alert.alert("Error", "Failed to remove member from group");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmRemoveMember = () => {
-    if (!selectedMember) return;
-
-    Alert.alert(
-      "Remove Member",
-      `Are you sure you want to remove ${selectedMember.username} from this group?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: removeMember },
-      ]
-    );
   };
 
   const finishTrip = () => {
@@ -154,24 +98,16 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: buttonColor }]}
+            style={[styles.button, { backgroundColor: colors.bgColor }]}
             onPress={handleStartJourney}
           >
-            <MaterialIcons name="play-circle-fill" size={24} color="white" />
-            <Text style={styles.buttonText}>
+            <MaterialIcons
+              name="play-circle-fill"
+              size={24}
+              color={colors.textColor}
+            />
+            <Text style={[styles.buttonText, { color: colors.textColor }]}>
               {isFollowJourney ? "Follow Member" : "Start Journey"}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {isLeader && (
-          <TouchableOpacity
-            style={[styles.manageMembersButton, { borderColor }]}
-            onPress={() => setShowMembersList(true)}
-          >
-            <MaterialIcons name="people" size={20} color={textColor} />
-            <Text style={[styles.manageMembersText, { color: textColor }]}>
-              Manage Members
             </Text>
           </TouchableOpacity>
         )}
@@ -266,72 +202,6 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
           </View>
         </View>
       </Modal>
-
-      {/* Member Actions Modal */}
-      <Modal
-        visible={showMemberActions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMemberActions(false)}
-      >
-        <View style={styles.actionModalOverlay}>
-          <View
-            style={[
-              styles.actionModalContent,
-              { backgroundColor: bgColor, borderColor },
-            ]}
-          >
-            <Text style={[styles.actionModalTitle, { color: textColor }]}>
-              {selectedMember?.username}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { borderBottomColor: borderColor }]}
-              onPress={() => {
-                if (selectedMember) {
-                  onFollowMember(selectedMember.id);
-                  setShowMemberActions(false);
-                  setShowMembersList(false);
-                }
-              }}
-            >
-              <MaterialIcons
-                name="person-pin-circle"
-                size={24}
-                color={textColor}
-              />
-              <Text style={[styles.actionButtonText, { color: textColor }]}>
-                Follow this member
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { borderBottomColor: borderColor }]}
-              onPress={confirmRemoveMember}
-            >
-              <MaterialIcons name="person-remove" size={24} color="#EF4444" />
-              <Text style={[styles.actionButtonText, { color: "#EF4444" }]}>
-                Remove from group
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCancelButton]}
-              onPress={() => setShowMemberActions(false)}
-            >
-              <Text style={[styles.actionCancelText, { color: buttonColor }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={buttonColor} />
-        </View>
-      )}
     </>
   );
 };
@@ -354,9 +224,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 8,
+    margin: 16,
   },
   buttonText: {
-    color: "white",
     fontSize: 16,
     fontWeight: "bold",
   },

@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  View,
-  StyleSheet,
-  Modal,
-  Alert,
-  TouchableOpacity,
-  Text,
-} from "react-native";
+import { View, StyleSheet, Modal, Text, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView from "react-native-maps";
-import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../../lib/supabase";
 import { useApp } from "../../../contexts/AppContext";
 import {
@@ -27,23 +19,18 @@ import { useMapMarkers } from "../../../hooks/useMapMarkers";
 // Components
 import GroupStateDisplay from "../../../components/map/GroupStateDisplay";
 import GroupHeader from "../../../components/map/GroupHeader";
-import GroupStats from "../../../components/map/GroupStats";
 import GroupMap from "../../../components/map/GroupMap";
 import MapToolControls from "../../../components/map/MapToolControls";
 import JourneyControls from "../../../components/map/JourneyControls";
 import RouteInfo from "../../../components/map/RouteInfo";
 import GroupMembersPanel from "../../../components/map/GroupMembersPanel";
-import PendingRequestsPanel from "../../../components/map/PendingRequestsPanel";
 import JoinGroupButton from "../../../components/groups/joinGroup/JoinGroupButton";
 import CustomMapMarkerForm from "../../../components/map/CustomMapMarkerForm";
+import { useColors } from "../../../contexts/ColorContext";
 
 // Types
-import {
-  Group,
-  MemberWithLocation,
-  Region,
-  CustomMarker,
-} from "../../../types/group";
+import { Group, MemberWithLocation, Region } from "../../../types/group";
+import { MapProvider } from "@/contexts/MapContext";
 
 const GroupMapScreen = () => {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -65,19 +52,20 @@ const GroupMapScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showMembersList, setShowMembersList] = useState(false);
-  const [showPendingRequests, setShowPendingRequests] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isFollowingActive, setIsFollowingActive] = useState(false);
   const [isMarkerModeActive, setIsMarkerModeActive] = useState(false);
 
+  const colors = useColors();
+
   // Colors
-  const bgColor = isDark ? "#1F2937" : "white";
-  const textColor = isDark ? "#F3F4F6" : "#1F2937";
-  const borderColor = isDark ? "#4B5563" : "#E5E7EB";
-  const cardBgColor = isDark ? "#374151" : "#F9FAFB";
-  const buttonColor = isDark ? "#3B82F6" : "#2563EB";
+  const bgColor = colors.bgColor;
+  const textColor = colors.textColor;
+  const borderColor = colors.borderColor;
+  const cardBgColor = colors.cardBgColor;
+  const buttonColor = colors.buttonBgColor;
 
   // Dark mode map style
   const mapStyle = isDark
@@ -286,6 +274,27 @@ const GroupMapScreen = () => {
               .single();
 
             if (updatedGroup) {
+              // Check if current user was kicked
+              if (
+                userDetails &&
+                !updatedGroup.group_members.includes(userDetails.id)
+              ) {
+                Alert.alert(
+                  "Kicked from Group",
+                  "You have been removed from this group.",
+                  [
+                    {
+                      text: "OK",
+                      onPress: async () => {
+                        await refreshGroups();
+                        router.replace("/groups");
+                      },
+                    },
+                  ]
+                );
+                return;
+              }
+
               setGroup(updatedGroup);
 
               // Update pending count
@@ -333,7 +342,7 @@ const GroupMapScreen = () => {
     return () => {
       supabase.removeChannel(groupSubscription);
     };
-  }, [code, group]);
+  }, [code, group, userDetails]);
 
   // Start tracking location if user is a member
   useEffect(() => {
@@ -426,6 +435,7 @@ const GroupMapScreen = () => {
         ...validMembers.map((m) => ({
           latitude: m.location!.latitude,
           longitude: m.location!.longitude,
+          avatar: m.avatar_url,
         }))
       );
     }
@@ -559,6 +569,32 @@ const GroupMapScreen = () => {
     setIsMarkerModeActive(false);
   };
 
+  const handleMemberKicked = (memberId: string) => {
+    // If the current user was kicked, show a popup and navigate away
+    if (memberId === userDetails?.id) {
+      Alert.alert(
+        "Kicked from Group",
+        "You have been removed from this group.",
+        [
+          {
+            text: "OK",
+            onPress: async () => {
+              // Refresh groups before navigating
+              await refreshGroups();
+              router.replace("/groups");
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // Update the members list
+    setMembers((prevMembers) =>
+      prevMembers.filter((member) => member.id !== memberId)
+    );
+  };
+
   // Render state components
   if (loading || error || !group) {
     return (
@@ -577,186 +613,179 @@ const GroupMapScreen = () => {
   }
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: bgColor }}
-      edges={["top", "right", "left"]}
-    >
-      <View style={[styles.container, { backgroundColor: bgColor }]}>
-        {/* Group Header */}
-        <GroupHeader
-          groupName={group.group_name}
-          groupCode={group.group_code}
-          onBack={() => router.back()}
-          textColor={textColor}
-          borderColor={borderColor}
-          backgroundColor={bgColor}
-        />
-
-        {/* Map View */}
-        {initialRegion && (
-          <GroupMap
-            mapRef={mapRef}
-            initialRegion={initialRegion}
-            destination={destination}
-            currentUserId={userDetails?.id || ""}
-            customMarkers={markers}
-            journeyState={journeyState}
-            mapStyle={mapStyle}
-            isDark={isDark}
-            onMapPress={handleMapPress}
-            onMapLongPress={handleMapLongPress}
-            onMarkerEdit={editMarker}
-            onMarkerDelete={deleteMarker}
-            onMapReady={handleMapReady}
-            members={membersWithLocations}
-          />
-        )}
-
-        {/* Map Tool Controls */}
-        <MapToolControls
-          onFitMarkers={fitToMarkers}
-          onAddMarker={toggleMarkerMode}
-          isMarkerModeActive={isMarkerModeActive}
-          onToggleMembersList={() => setShowMembersList(true)}
-          onToggleFollowMode={handleToggleFollowMode}
-          onGoToMyLocation={goToUserLocation}
-          isFollowingActive={isFollowingActive}
-          pendingRequestsCount={0} // Hide pending requests indicator
-          onShowPendingRequests={() => {}} // Disabled
-          isLeader={false} // Disable leader-specific controls
-          textColor={textColor}
-          borderColor={borderColor}
-          bgColor={cardBgColor}
-        />
-
-        {/* Marker Mode Indicator */}
-        {isMarkerModeActive && (
-          <View
-            style={[styles.markerModeIndicator, { backgroundColor: "#10B981" }]}
-          >
-            <Text style={styles.markerModeText}>
-              Tap anywhere on the map to add a marker
-            </Text>
-          </View>
-        )}
-
-        {/* Route Info Card */}
-        <RouteInfo
-          visible={journeyState.isActive && !!activeRoute}
-          distance={activeRoute?.distance || ""}
-          duration={activeRoute?.duration || ""}
-          originName={routeOriginName}
-          destinationName={routeDestinationName}
-          routeError={routeError}
-          onClose={() => endJourney()}
-          textColor={textColor}
-          bgColor={cardBgColor}
-          borderColor={borderColor}
-        />
-
-        {/* Journey Controls for members */}
-        {isUserMember() && (
-          <JourneyControls
-            groupId={group.group_id}
+    <MapProvider>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: bgColor }}
+        edges={["top", "right", "left"]}
+      >
+        <View style={[styles.container, { backgroundColor: "transparent" }]}>
+          {/* Group Header */}
+          <GroupHeader
             groupName={group.group_name}
-            members={membersWithLocations}
-            isLeader={isUserLeader()}
-            isJourneyActive={journeyState.isActive}
-            isFollowJourney={group.group_type === "FollowMember"}
-            followedMemberId={journeyState.followedMemberId}
-            destinationId={group.destination_id}
-            onJourneyStart={() => {
-              // For FollowMember type, we need to select someone to follow if not already set
-              if (
-                group.group_type === "FollowMember" &&
-                !journeyState.followedMemberId
-              ) {
-                // Find a non-current user to follow
-                const otherMembers = membersWithLocations.filter(
-                  (m) => m.id !== userDetails?.id && m.location
-                );
+            groupCode={group.group_code}
+            onBack={() => router.back()}
+            textColor={textColor}
+            borderColor={borderColor}
+            backgroundColor={bgColor}
+          />
 
-                if (otherMembers.length > 0) {
-                  // Start following the first member with location
-                  startJourney(otherMembers[0].id);
-                } else {
-                  // No one to follow
-                  alert(
-                    "No members available to follow. Make sure other members are online."
+          {/* Map View */}
+          {initialRegion && (
+            <GroupMap
+              mapRef={mapRef}
+              initialRegion={initialRegion}
+              destination={destination}
+              currentUserId={userDetails?.id || ""}
+              customMarkers={markers}
+              journeyState={journeyState}
+              mapStyle={mapStyle}
+              isDark={isDark}
+              onMapPress={handleMapPress}
+              onMapLongPress={handleMapLongPress}
+              onMarkerEdit={editMarker}
+              onMarkerDelete={deleteMarker}
+              onMapReady={handleMapReady}
+              members={membersWithLocations}
+              userLocation={userLocation || undefined}
+            />
+          )}
+
+          {/* Map Tool Controls */}
+          <MapToolControls
+            onFitMarkers={fitToMarkers}
+            onAddMarker={toggleMarkerMode}
+            isMarkerModeActive={isMarkerModeActive}
+            onToggleMembersList={() => setShowMembersList(true)}
+            onToggleFollowMode={handleToggleFollowMode}
+            onGoToMyLocation={goToUserLocation}
+            isFollowingActive={isFollowingActive}
+            pendingRequestsCount={0} // Hide pending requests indicator
+            onShowPendingRequests={() => {}} // Disabled
+            isLeader={false} // Disable leader-specific controls
+            textColor={textColor}
+            borderColor={borderColor}
+            bgColor={cardBgColor}
+          />
+
+          {/* Marker Mode Indicator */}
+          {isMarkerModeActive && (
+            <View
+              style={[
+                styles.markerModeIndicator,
+                { backgroundColor: "#10B981" },
+              ]}
+            >
+              <Text style={styles.markerModeText}>
+                Tap anywhere on the map to add a marker
+              </Text>
+            </View>
+          )}
+
+          {/* Route Info Card */}
+          <RouteInfo
+            visible={journeyState.isActive && !!activeRoute}
+            distance={activeRoute?.distance || ""}
+            duration={activeRoute?.duration || ""}
+            originName={routeOriginName}
+            destinationName={routeDestinationName}
+            routeError={routeError}
+            onClose={() => endJourney()}
+            textColor={textColor}
+            bgColor={cardBgColor}
+            borderColor={borderColor}
+          />
+
+          {/* Journey Controls for members */}
+          {isUserMember() && (
+            <JourneyControls
+              groupId={group.group_id}
+              groupName={group.group_name}
+              members={membersWithLocations}
+              isLeader={isUserLeader()}
+              isJourneyActive={journeyState.isActive}
+              isFollowJourney={group.group_type === "FollowMember"}
+              followedMemberId={journeyState.followedMemberId}
+              destinationId={group.destination_id}
+              onJourneyStart={() => {
+                // For FollowMember type, we need to select someone to follow if not already set
+                if (
+                  group.group_type === "FollowMember" &&
+                  !journeyState.followedMemberId
+                ) {
+                  // Find a non-current user to follow
+                  const otherMembers = membersWithLocations.filter(
+                    (m) => m.id !== userDetails?.id && m.location
                   );
+
+                  if (otherMembers.length > 0) {
+                    // Start following the first member with location
+                    startJourney(otherMembers[0].id);
+                  } else {
+                    // No one to follow
+                    alert(
+                      "No members available to follow. Make sure other members are online."
+                    );
+                  }
+                } else {
+                  // Regular destination journey or follow journey with member already selected
+                  startJourney(journeyState.followedMemberId);
                 }
-              } else {
-                // Regular destination journey or follow journey with member already selected
-                startJourney(journeyState.followedMemberId);
-              }
-            }}
-            onJourneyEnd={endJourney}
-            onFollowMember={setFollowedMember}
-            onUpdateMembers={handleRequestProcessed}
+              }}
+              onJourneyEnd={endJourney}
+              onFollowMember={setFollowedMember}
+              onUpdateMembers={handleRequestProcessed}
+              textColor={textColor}
+              buttonColor={buttonColor}
+              borderColor={borderColor}
+              bgColor={bgColor}
+            />
+          )}
+
+          {/* Join Button for non-members */}
+          {!isUserMember() && (
+            <JoinGroupButton onJoin={joinGroup} buttonColor={buttonColor} />
+          )}
+
+          {/* Modals */}
+          <Modal
+            visible={showMembersList}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowMembersList(false)}
+          >
+            <GroupMembersPanel
+              groupId={group.group_id}
+              isLeader={isUserLeader()}
+              members={membersWithLocations}
+              leaderId={group.leader_id}
+              currentUserId={userDetails?.id || ""}
+              destination={destination}
+              textColor={textColor}
+              cardBgColor={cardBgColor}
+              createdBy={group.created_by}
+              onMemberSelect={handleMemberSelect}
+              onClose={() => setShowMembersList(false)}
+              onMemberKicked={handleMemberKicked}
+            />
+          </Modal>
+
+          {/* Marker Form */}
+          <CustomMapMarkerForm
+            visible={showAddMarkerForm}
+            onClose={handleCloseMarkerForm}
+            onAddMarker={addMarker}
+            locationCoordinates={
+              markerLocation || { latitude: 0, longitude: 0 }
+            }
+            username={userDetails?.username || ""}
             textColor={textColor}
+            bgColor={bgColor}
+            borderColor={borderColor}
             buttonColor={buttonColor}
-            borderColor={borderColor}
-            bgColor={bgColor}
           />
-        )}
-
-        {/* Join Button for non-members */}
-        {!isUserMember() && (
-          <JoinGroupButton onJoin={joinGroup} buttonColor={buttonColor} />
-        )}
-
-        {/* Modals */}
-        <Modal
-          visible={showMembersList}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowMembersList(false)}
-        >
-          <GroupMembersPanel
-            members={membersWithLocations}
-            leaderId={group.leader_id}
-            currentUserId={userDetails?.id || ""}
-            destination={destination}
-            textColor={textColor}
-            cardBgColor={cardBgColor}
-            onMemberSelect={handleMemberSelect}
-            onClose={() => setShowMembersList(false)}
-          />
-        </Modal>
-
-        <Modal
-          visible={showPendingRequests && isUserLeader()}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPendingRequests(false)}
-        >
-          <PendingRequestsPanel
-            groupId={group.group_id}
-            requests={group.request || []}
-            textColor={textColor}
-            cardBgColor={cardBgColor}
-            bgColor={bgColor}
-            borderColor={borderColor}
-            isLeader={isUserLeader()}
-            onClose={() => setShowPendingRequests(false)}
-            onRequestProcessed={handleRequestProcessed}
-          />
-        </Modal>
-
-        {/* Marker Form */}
-        <CustomMapMarkerForm
-          visible={showAddMarkerForm}
-          onClose={handleCloseMarkerForm}
-          onAddMarker={addMarker}
-          locationCoordinates={markerLocation || { latitude: 0, longitude: 0 }}
-          username={userDetails?.username || ""}
-          textColor={textColor}
-          bgColor={bgColor}
-          borderColor={borderColor}
-          buttonColor={buttonColor}
-        />
-      </View>
-    </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </MapProvider>
   );
 };
 

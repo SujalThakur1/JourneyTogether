@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>myapp</string>
-          <string>ios</string>
+          <string>sujal.journey.app</string>
         </array>
       </dict>
     </array>
