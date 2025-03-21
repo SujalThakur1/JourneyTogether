@@ -26,10 +26,16 @@ import RouteInfo from "../../../components/map/RouteInfo";
 import GroupMembersPanel from "../../../components/map/GroupMembersPanel";
 import JoinGroupButton from "../../../components/groups/joinGroup/JoinGroupButton";
 import CustomMapMarkerForm from "../../../components/map/CustomMapMarkerForm";
+import CustomMapClickForm from "../../../components/map/CustomMapClickForm";
 import { useColors } from "../../../contexts/ColorContext";
 
 // Types
-import { Group, MemberWithLocation, Region } from "../../../types/group";
+import {
+  Group,
+  MemberWithLocation,
+  Region,
+  CustomMarker,
+} from "../../../types/group";
 import { MapProvider } from "@/contexts/MapContext";
 
 const GroupMapScreen = () => {
@@ -57,6 +63,10 @@ const GroupMapScreen = () => {
   const [isMapReady, setIsMapReady] = useState(false);
   const [isFollowingActive, setIsFollowingActive] = useState(false);
   const [isMarkerModeActive, setIsMarkerModeActive] = useState(false);
+  const [selectedMarker, setSelectedMarker] = useState<CustomMarker | null>(
+    null
+  );
+  const [showMarkerDetails, setShowMarkerDetails] = useState(false);
 
   const colors = useColors();
 
@@ -595,6 +605,11 @@ const GroupMapScreen = () => {
     );
   };
 
+  const handleMarkerPress = (marker: CustomMarker) => {
+    setSelectedMarker(marker);
+    setShowMarkerDetails(true);
+  };
+
   // Render state components
   if (loading || error || !group) {
     return (
@@ -647,6 +662,7 @@ const GroupMapScreen = () => {
               onMapReady={handleMapReady}
               members={membersWithLocations}
               userLocation={userLocation || undefined}
+              onMarkerPress={handleMarkerPress}
             />
           )}
 
@@ -769,7 +785,7 @@ const GroupMapScreen = () => {
             />
           </Modal>
 
-          {/* Marker Form */}
+          {/* Existing Marker Form for adding new markers */}
           <CustomMapMarkerForm
             visible={showAddMarkerForm}
             onClose={handleCloseMarkerForm}
@@ -783,6 +799,25 @@ const GroupMapScreen = () => {
             borderColor={borderColor}
             buttonColor={buttonColor}
           />
+
+          {/* New Marker Details Form */}
+          {selectedMarker && (
+            <CustomMapClickForm
+              visible={showMarkerDetails}
+              onClose={() => {
+                setShowMarkerDetails(false);
+                setSelectedMarker(null);
+              }}
+              onEditMarker={editMarker}
+              onDeleteMarker={deleteMarker}
+              marker={selectedMarker}
+              textColor={textColor}
+              bgColor={bgColor}
+              borderColor={borderColor}
+              buttonColor={buttonColor}
+              isCurrentUserCreator={selectedMarker.userId === userDetails?.id}
+            />
+          )}
         </View>
       </SafeAreaView>
     </MapProvider>

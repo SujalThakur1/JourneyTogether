@@ -177,7 +177,12 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
                 {loading ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
-                  <Text style={[styles.saveButtonText, { color: color.buttonTextColor }]}>
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      { color: color.buttonTextColor },
+                    ]}
+                  >
                     Add Marker
                   </Text>
                 )}

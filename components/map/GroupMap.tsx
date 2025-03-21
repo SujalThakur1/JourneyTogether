@@ -29,6 +29,7 @@ interface GroupMapProps {
   mapRef: React.RefObject<MapView>;
   members: MemberWithLocation[];
   userLocation?: { latitude: number; longitude: number };
+  onMarkerPress: (marker: CustomMarker) => void;
 }
 
 const GroupMap: React.FC<GroupMapProps> = ({
@@ -47,6 +48,7 @@ const GroupMap: React.FC<GroupMapProps> = ({
   mapRef,
   members,
   userLocation,
+  onMarkerPress,
 }) => {
   const color = useColors();
   // Find out if current user created each custom marker
@@ -308,6 +310,7 @@ const GroupMap: React.FC<GroupMapProps> = ({
         <CustomMapMarker
           key={marker.id}
           marker={marker}
+          onMarkerPress={onMarkerPress}
           onEdit={onMarkerEdit}
           onDelete={onMarkerDelete}
           isCurrentUserCreator={isCurrentUserCreator(marker)}
