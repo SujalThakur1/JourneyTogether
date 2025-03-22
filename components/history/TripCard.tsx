@@ -16,7 +16,7 @@ export default function TripCard({ trip }: TripCardProps) {
   const { openBottomSheet } = useBottomSheet();
 
   const handleCreateGroup = () => {
-    openBottomSheet(trip.title, trip.id);
+    openBottomSheet(trip.name, trip.id);
   };
 
   const handleViewDetails = () => {
@@ -50,10 +50,10 @@ export default function TripCard({ trip }: TripCardProps) {
         </View>
 
         <View style={[styles.cardBody, { marginTop: 12 }]}>
-          <Image source={{ uri: trip.image }} style={styles.avatar} />
+          <Image source={{ uri: trip.primary_image }} style={styles.avatar} />
           <View style={styles.tripDetails}>
             <Text style={[styles.tripTitle, { color: colors.textColor }]}>
-              {trip.title}
+              {trip.name}
             </Text>
             <Text style={{ color: colors.mutedTextColor }}>
               <Ionicons name="location-outline" size={14} /> {trip.location}

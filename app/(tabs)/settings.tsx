@@ -75,17 +75,17 @@ export default function SettingsScreen() {
         {
           icon: "person-outline",
           label: "Profile Settings",
-          route: "/settings/profile",
+          route: "/settings/commingSoon",
         },
         {
           icon: "lock-closed-outline",
           label: "Privacy & Security",
-          route: "/settings/privacy",
+          route: "/settings/commingSoon",
         },
         {
           icon: "notifications-outline",
           label: "Notification Preferences",
-          route: "/settings/notifications",
+          route: "/settings/commingSoon",
         },
       ],
     },
@@ -95,22 +95,22 @@ export default function SettingsScreen() {
         {
           icon: "help-circle-outline",
           label: "Help Center",
-          route: "/settings/help",
+          route: "/settings/commingSoon",
         },
         {
           icon: "chatbox-outline",
           label: "Contact Support",
-          route: "/settings/support",
+          route: "/settings/commingSoon",
         },
         {
           icon: "document-text-outline",
           label: "Terms of Service",
-          route: "/settings/terms",
+          route: "/settings/commingSoon",
         },
         {
           icon: "shield-outline",
           label: "Privacy Policy",
-          route: "/settings/privacy-policy",
+          route: "/settings/commingSoon",
         },
       ],
     },

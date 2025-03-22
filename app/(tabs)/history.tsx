@@ -32,45 +32,45 @@ export const BottomSheetContext = createContext<BottomSheetContextType>({
 
 export const useBottomSheet = () => useContext(BottomSheetContext);
 
-interface Trip {
-  id: number;
-  status: string;
-  date: string;
-  image: string;
-  title: string;
-  location: string;
-  tags: string[];
-  participants: number;
-}
+// interface Trip {
+//   id: number;
+//   status: string;
+//   date: string;
+//   image: string;
+//   title: string;
+//   location: string;
+//   tags: string[];
+//   participants: number;
+// }
 
-const PAST_TRIPS: Trip[] | null = [
-  {
-    id: 1,
-    status: "Completed",
-    date: "March 15, 2024",
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-    title: "Beach Paradise Tour",
-    location: "Miami Beach, FL",
-    tags: ["Beach", "Adventure"],
-    participants: 4,
-  },
-  {
-    id: 2,
-    status: "Completed",
-    date: "March 15, 2024",
-    image:
-      "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&q=80&w=600",
-    title: "Beach Paradise Tour",
-    location: "Miami Beach, FL",
-    tags: ["Beach", "Adventure"],
-    participants: 4,
-  },
-];
+// const PAST_TRIPS: Trip[] | null = [
+//   {
+//     id: 1,
+//     status: "Completed",
+//     date: "March 15, 2024",
+//     image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
+//     title: "Beach Paradise Tour",
+//     location: "Miami Beach, FL",
+//     tags: ["Beach", "Adventure"],
+//     participants: 4,
+//   },
+//   {
+//     id: 2,
+//     status: "Completed",
+//     date: "March 15, 2024",
+//     image:
+//       "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&q=80&w=600",
+//     title: "Beach Paradise Tour",
+//     location: "Miami Beach, FL",
+//     tags: ["Beach", "Adventure"],
+//     participants: 4,
+//   },
+// ];
 
-const MENU_ITEMS = [
-  { icon: "calendar-outline" as const, label: "Date Range" },
-  { icon: "checkmark-circle-outline" as const, label: "Status" },
-];
+// const MENU_ITEMS = [
+//   { icon: "calendar-outline" as const, label: "Date Range" },
+//   { icon: "checkmark-circle-outline" as const, label: "Status" },
+// ];
 
 export default function HistoryScreen() {
   const [activeTab, setActiveTab] = useState(0);

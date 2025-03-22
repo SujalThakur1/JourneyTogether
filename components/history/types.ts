@@ -3,8 +3,11 @@ export interface Trip {
   id: number;
   status: "Completed" | "Saved" | "Pending" | "Cancelled"; // Enum-like union type for status
   date: string; // Consider using Date if you plan to do date operations
-  image: string; // URL or path to image
-  title: string;
+  longitude: number;
+  latitude: number;
+  rating: number;
+  primary_image: string;
+  name: string;
   location: string;
   tags: string[];
   participants: number;
@@ -44,24 +47,31 @@ export const MENU_ITEMS: MenuItem[] = [
 // Sample data with const assertion for better type inference
 export const PAST_TRIPS = [
   {
-    id: 1,
+    id: 42,
     status: "Completed" as const,
     date: "March 15, 2024",
-    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
-    title: "Beach Paradise Tour",
-    location: "Miami Beach, FL",
+    longitude: -159.6588788,
+    latitude: 22.1725249,
+    rating: 5,
+    primary_image:
+      "https://static.wixstatic.com/media/181542_c71b7453d37246618b25c3c5dbf56983~mv2.jpg/v1/fill/w_980,h_653,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/181542_c71b7453d37246618b25c3c5dbf56983~mv2.jpg",
+    name: "Kalalau Beach",
+    location: "Kalalau Beach, Hawaii, USA",
     tags: ["Beach", "Adventure"],
     participants: 4,
   },
   {
-    id: 2,
+    id: 41,
     status: "Completed" as const,
     date: "March 15, 2024",
-    image:
-      "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&q=80&w=600",
-    title: "Beach Paradise Tour",
-    location: "Miami Beach, FL",
-    tags: ["Beach", "Adventure"],
+    longitude: -105.6836389,
+    latitude: 40.3427932,
+    rating: 4.5,
+    primary_image:
+      "https://img.freepik.com/premium-photo/image-is-beautiful-landscape-photograph-man-standing-mountaintop-overlooking-vast-sea-clouds_14117-107202.jpg",
+    name: "Rocky Mountain National Park",
+    location: "Rocky Mountain National Park, Colorado, USA",
+    tags: ["Adventure", "Mountain"],
     participants: 4,
   },
 ] satisfies Trip[]; // Type assertion to ensure array matches Trip interface

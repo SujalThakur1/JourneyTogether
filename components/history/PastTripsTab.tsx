@@ -12,6 +12,7 @@ import { PAST_TRIPS, MENU_ITEMS } from "./types";
 import TripCard from "./TripCard";
 import EmptyState from "./EmptyState";
 import { useBottomSheet } from "../../app/(tabs)/history";
+import { router } from "expo-router";
 
 export default function PastTripsTab() {
   const [showFilter, setShowFilter] = useState(false);
@@ -19,7 +20,7 @@ export default function PastTripsTab() {
   const { openBottomSheet } = useBottomSheet();
 
   const handleExploreTrips = () => {
-    openBottomSheet("New Adventure", 1);
+    router.push("/");
   };
 
   return (

@@ -7,6 +7,7 @@ import EmptyState from "./EmptyState";
 import { supabase } from "../../lib/supabase";
 import { useUser } from "../../contexts/UserContext";
 import { useBottomSheet } from "../../app/(tabs)/history";
+import { router } from "expo-router";
 
 export default function SavedTripsTab() {
   const { user } = useUser();
@@ -46,8 +47,9 @@ export default function SavedTripsTab() {
         const formattedTrips = destinationsData.map((dest: Destination) => ({
           id: dest.destination_id,
           status: "Saved",
-          image: dest.primary_image || dest.images?.[0] || "",
-          title: dest.name,
+          primary_image: dest.primary_image || "",
+          images: dest.images || [],
+          name: dest.name,
           location: dest.location,
           tags: [],
         }));
@@ -65,7 +67,7 @@ export default function SavedTripsTab() {
   }, [user]);
 
   const handleCreateGroup = () => {
-    openBottomSheet("New Trip", 1);
+    router.push("/");
   };
 
   if (loading) {
@@ -89,12 +91,12 @@ export default function SavedTripsTab() {
             icon="bookmark-outline"
             title="No Saved Destinations"
             description="Save your favorite destinations or create a group to plan with others!"
-            buttonText="Create Group"
+            buttonText="Explore Destinations"
             onButtonPress={handleCreateGroup}
           />
         )}
       </View>
-    </ScrollView>
+    </ScrollView> 
   );
 }
 
