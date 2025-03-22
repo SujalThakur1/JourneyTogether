@@ -155,14 +155,6 @@ export const GroupsProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [userDetails]);
 
-  const fetchGroupMembersLocations = async () => {
-    if (!groupMembers.length) return;
-
-    const memberIds = groupMembers.map((member) => member.id);
-    const locations = await getGroupMembersLocations(memberIds);
-    setMembersLocations(locations);
-  };
-
   useEffect(() => {
     if (
       (!users || users.length === 0) &&

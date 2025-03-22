@@ -91,7 +91,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   const [notificationCount, setNotificationCount] = useState<number>(0);
-
+  const [isFetchingUsers, setIsFetchingUsers] = useState(true);
   // Added state for users
   const [users, setUsers] = useState<any[]>([]); // Holds the list of users
 
@@ -116,20 +116,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Check cache first if not forcing refresh
         if (!forceRefresh) {
           const cachedUsers = await AsyncStorage.getItem(CACHE_KEYS.USERS);
+
           if (cachedUsers) {
             const parsedUsers = JSON.parse(cachedUsers);
             if (parsedUsers && parsedUsers.length > 0) {
               setUsers(parsedUsers);
               setHasAttemptedFetch(true);
               setIsUsersLoading(false);
-              console.log("users have been fetched from cache");
               return;
             }
           }
         }
 
         // If we get here, we need to fetch from Supabase
-        console.log("Fetching users from Supabase...");
         const { data, error } = await supabase.from("users").select("*");
         console.log("Fetching2 users from Supabase...");
 
@@ -294,6 +293,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { event: "*", schema: "public", table: "users" },
         (payload) => {
           console.log("Change received in users table!", payload);
+          console.log("Fetching users from Supabase2...");
           // Force refresh users data when a change is detected
           fetchAllUsers(true);
         }
@@ -308,8 +308,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch users initially when the provider mounts
   useEffect(() => {
-    fetchAllUsers();
-  }, [fetchAllUsers]);
+    if (isFetchingUsers) {
+      fetchAllUsers();
+      setIsFetchingUsers(false);
+    }
+  }, [fetchAllUsers, isFetchingUsers]);
 
   // Existing useEffect hooks (unchanged, included for completeness)
   useEffect(() => {
