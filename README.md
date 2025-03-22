@@ -129,7 +129,7 @@ See all members in your group with their distance from the destination. The lead
 4. Start the development server
 
    ```bash
-   npx expo start
+   npm start
    ```
 
 5. Launch the app on your preferred platform:
