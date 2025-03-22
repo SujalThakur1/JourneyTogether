@@ -14,37 +14,33 @@ Browse popular destinations categorized by Jungle, Beach, Mountain, and Water. E
 
 ### Groups Management
 
-![Groups Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/groups.png)
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/group.png?raw=true" alt="image" width="300" height="400">
 
 In the Groups Management section, you can view your current travel groups with details about group members and destinations, along with a map preview of your journey. To Join an Existing Group, simply enter the 6-digit group code provided by the group admin and join your friends' adventures. If you prefer to Create a New Group, you have two options: either travel to a specific destination as a group or follow a group member to stay together by following their lead.
 
 ### Travel History
 
-![History Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/history.png)
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/history.png?raw=true" alt="image" width="300" height="400">
 
 Keep track of your saved places and past trips. Easily create new groups for favorite destinations or view detailed information about previously visited locations.
 
 ### User Settings
 
-![Settings Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/settings.png)
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/setting.png?raw=true" alt="image" width="300" height="400">
 
 Customize your app experience with appearance settings (Light/Dark/System modes), manage notification preferences, and control location sharing permissions.
 
-### Live Location Sharing
+### Live Map
 
-![Map View](https://github.com/SujalThakur1/journey/raw/main/screenshots/map_view.png)
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/map.png?raw=true" alt="image" width="300" height="400">
 
 See the real-time location of all group members on an interactive map. View distance information showing how far members are from you and from the destination.
-
-### Map Interaction
-
-![Map Interaction](https://github.com/SujalThakur1/journey/raw/main/screenshots/map_interaction.png)
 
 Add custom markers on the map using the "Tap anywhere on the map to add a marker" feature, helping you mark stop points or important locations along your journey. You can also create detailed waypoints with custom titles and descriptions to highlight key stops or locations for your travel companions.
 
 ### Group Members View
 
-![Group Members](https://github.com/SujalThakur1/JourneyTogether/blob/main/337shots_so.png?raw=true)
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/337shots_so.png?raw=true" alt="image" width="300" height="400">
 
 See all members in your group with their distance from the destination. The leader can add or remove group members, identify the group leader, and track everyone's progress toward the destination.
 
