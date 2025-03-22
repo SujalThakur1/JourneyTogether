@@ -1,4 +1,4 @@
-<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/main.png?raw=true" alt="image" width="300" height="400">
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/main.png?raw=true" alt="image" width="400" height="500">
 
 ## Journey - Group Travel Made Easy
 
