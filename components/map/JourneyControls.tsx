@@ -8,11 +8,13 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
-import { MemberWithLocation } from "../../types/group";
+import { MemberWithLocation, CustomMarker } from "../../types/group";
 import { useColors } from "../../contexts/ColorContext";
+
 interface JourneyControlsProps {
   groupId: number;
   groupName: string;
@@ -30,6 +32,8 @@ interface JourneyControlsProps {
   buttonColor: string;
   borderColor: string;
   bgColor: string;
+  waypoints?: CustomMarker[];
+  onClearWaypoints?: () => void;
 }
 
 const JourneyControls: React.FC<JourneyControlsProps> = ({
@@ -47,6 +51,8 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   buttonColor,
   borderColor,
   bgColor,
+  waypoints,
+  onClearWaypoints,
 }) => {
   const colors = useColors();
   const [showMemberActions, setShowMemberActions] = useState(false);
@@ -110,6 +116,63 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
               {isFollowJourney ? "Follow Member" : "Start Journey"}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {/* Waypoints display */}
+        {waypoints && waypoints.length > 0 && (
+          <View
+            style={[
+              styles.waypointsPanel,
+              { backgroundColor: colors.cardBgColor, borderColor: borderColor },
+            ]}
+          >
+            <View style={styles.waypointsHeader}>
+              <Text style={[styles.waypointsTitle, { color: textColor }]}>
+                Waypoints ({waypoints.length})
+              </Text>
+              {onClearWaypoints && (
+                <TouchableOpacity
+                  onPress={onClearWaypoints}
+                  style={styles.clearWaypointsButton}
+                >
+                  <MaterialIcons name="clear-all" size={18} color={textColor} />
+                  <Text
+                    style={[{ color: textColor, fontSize: 12, marginLeft: 4 }]}
+                  >
+                    Clear All
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.waypointsList}
+            >
+              {waypoints.map((waypoint, index) => (
+                <View
+                  key={waypoint.id}
+                  style={[styles.waypointItem, { borderColor: borderColor }]}
+                >
+                  <MaterialIcons name="flag" size={16} color={textColor} />
+                  <Text
+                    style={[
+                      {
+                        color: textColor,
+                        fontSize: 12,
+                        marginLeft: 4,
+                        maxWidth: 100,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {index + 1}. {waypoint.title}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
         )}
       </View>
 
@@ -348,6 +411,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 100,
+  },
+  waypointsPanel: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  waypointsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  waypointsTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  clearWaypointsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  waypointsList: {
+    flexDirection: "row",
+  },
+  waypointItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
   },
 });
 

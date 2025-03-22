@@ -70,6 +70,7 @@ export interface CustomMarker {
   createdBy: string;
   createdAt: Date;
   userId: string;
+  followedBy?: string[]; // Array of user IDs that use this marker as a waypoint
 }
 
 export interface JourneyState {
@@ -77,4 +78,5 @@ export interface JourneyState {
   startTime?: number;
   followedMemberId?: string;
   routes: MemberRoute[];
+  waypoints: CustomMarker[];
 }

@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { View, StyleSheet, Modal, Text, Alert } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Modal,
+  Text,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MapView from "react-native-maps";
 import { supabase } from "../../../lib/supabase";
@@ -37,6 +44,7 @@ import {
   CustomMarker,
 } from "../../../types/group";
 import { MapProvider } from "@/contexts/MapContext";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const GroupMapScreen = () => {
   const { code } = useLocalSearchParams<{ code: string }>();
@@ -100,8 +108,13 @@ const GroupMapScreen = () => {
     addMarker,
     editMarker,
     deleteMarker,
+    addWaypoint,
+    removeWaypoint,
+    isUserWaypoint,
+    getUserWaypointMarkers,
     showMarkerFormAtLocation,
     closeMarkerForm,
+    clearAllWaypoints,
   } = useMapMarkers(
     userDetails?.username || "",
     userDetails?.id || "",
@@ -117,11 +130,15 @@ const GroupMapScreen = () => {
     startJourney,
     endJourney,
     setFollowedMember,
+    addWaypoint: addJourneyWaypoint,
+    removeWaypoint: removeJourneyWaypoint,
+    clearWaypoints,
   } = useJourney({
     members: membersWithLocations,
     groupType: group?.group_type || "TravelToDestination",
     destination: destination,
     currentUserId: userDetails?.id || "",
+    groupId: group?.group_id || 0,
   });
 
   // Fetch group data
@@ -502,7 +519,7 @@ const GroupMapScreen = () => {
         console.log("Adding marker at:", coordinate);
 
         // Show the form to edit the marker details
-        showMarkerFormAtLocation(coordinate.latitude, coordinate.longitude);
+        showMarkerFormAtLocation(coordinate);
       } else {
         console.error("No coordinate found in map press event");
       }
@@ -610,6 +627,40 @@ const GroupMapScreen = () => {
     setShowMarkerDetails(true);
   };
 
+  // Updated function to handle adding a waypoint
+  const handleAddWaypoint = (marker: CustomMarker) => {
+    // Update in database via useMapMarkers
+    addWaypoint(marker);
+
+    // Also update journey state for immediate route recalculation
+    addJourneyWaypoint(marker);
+  };
+
+  // Updated function to handle removing a waypoint
+  const handleRemoveWaypoint = (marker: CustomMarker) => {
+    // Update in database via useMapMarkers
+    removeWaypoint(marker);
+
+    // Also update journey state for immediate route recalculation
+    removeJourneyWaypoint(marker);
+  };
+
+  // Handler for clearing all waypoints
+  const handleClearAllWaypoints = async () => {
+    try {
+      // Clear waypoints in the database
+      await clearAllWaypoints();
+
+      // Also clear waypoints in journey state
+      clearWaypoints();
+
+      console.log("All waypoints cleared successfully");
+    } catch (error) {
+      console.error("Error clearing waypoints:", error);
+      Alert.alert("Error", "Failed to clear all waypoints. Please try again.");
+    }
+  };
+
   // Render state components
   if (loading || error || !group) {
     return (
@@ -642,6 +693,10 @@ const GroupMapScreen = () => {
             textColor={textColor}
             borderColor={borderColor}
             backgroundColor={bgColor}
+            isJourneyActive={journeyState.isActive}
+            distance={activeRoute?.distance || ""}
+            duration={activeRoute?.duration || ""}
+            routeError={routeError}
           />
 
           {/* Map View */}
@@ -697,20 +752,6 @@ const GroupMapScreen = () => {
             </View>
           )}
 
-          {/* Route Info Card */}
-          <RouteInfo
-            visible={journeyState.isActive && !!activeRoute}
-            distance={activeRoute?.distance || ""}
-            duration={activeRoute?.duration || ""}
-            originName={routeOriginName}
-            destinationName={routeDestinationName}
-            routeError={routeError}
-            onClose={() => endJourney()}
-            textColor={textColor}
-            bgColor={cardBgColor}
-            borderColor={borderColor}
-          />
-
           {/* Journey Controls for members */}
           {isUserMember() && (
             <JourneyControls
@@ -754,6 +795,8 @@ const GroupMapScreen = () => {
               buttonColor={buttonColor}
               borderColor={borderColor}
               bgColor={bgColor}
+              waypoints={journeyState.waypoints}
+              onClearWaypoints={handleClearAllWaypoints}
             />
           )}
 
@@ -802,21 +845,38 @@ const GroupMapScreen = () => {
 
           {/* New Marker Details Form */}
           {selectedMarker && (
-            <CustomMapClickForm
-              visible={showMarkerDetails}
-              onClose={() => {
-                setShowMarkerDetails(false);
-                setSelectedMarker(null);
-              }}
-              onEditMarker={editMarker}
-              onDeleteMarker={deleteMarker}
-              marker={selectedMarker}
-              textColor={textColor}
-              bgColor={bgColor}
-              borderColor={borderColor}
-              buttonColor={buttonColor}
-              isCurrentUserCreator={selectedMarker.userId === userDetails?.id}
-            />
+            <>
+              <CustomMapClickForm
+                visible={showMarkerDetails && !!selectedMarker}
+                onClose={() => setShowMarkerDetails(false)}
+                onEditMarker={editMarker}
+                onDeleteMarker={deleteMarker}
+                onAddWaypoint={handleAddWaypoint}
+                onRemoveWaypoint={handleRemoveWaypoint}
+                marker={selectedMarker!}
+                bgColor={cardBgColor}
+                textColor={textColor}
+                borderColor={borderColor}
+                buttonColor={buttonColor}
+                isCurrentUserCreator={
+                  selectedMarker
+                    ? selectedMarker.userId === userDetails?.id
+                    : false
+                }
+                isWaypoint={
+                  selectedMarker ? isUserWaypoint(selectedMarker.id) : false
+                }
+              />
+
+              {/* 
+                Waypoint Functionality:
+                - When a user clicks on a marker, CustomMapClickForm shows with "Add as Waypoint" button
+                - When clicked, the marker is added to journeyState.waypoints via addWaypoint function
+                - If journey is active, route is recalculated including the waypoint
+                - Waypoints are displayed in JourneyControls component
+                - Users can clear all waypoints using the Clear All button
+              */}
+            </>
           )}
         </View>
       </SafeAreaView>

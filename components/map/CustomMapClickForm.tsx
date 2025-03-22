@@ -19,12 +19,15 @@ interface CustomMapClickFormProps {
   onClose: () => void;
   onEditMarker: (marker: CustomMarker) => void;
   onDeleteMarker: (markerId: string, userId: string) => void;
+  onAddWaypoint?: (marker: CustomMarker) => void;
+  onRemoveWaypoint?: (marker: CustomMarker) => void;
   marker: CustomMarker;
   textColor: string;
   bgColor: string;
   borderColor: string;
   buttonColor: string;
   isCurrentUserCreator: boolean;
+  isWaypoint?: boolean;
 }
 
 const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
@@ -32,12 +35,15 @@ const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
   onClose,
   onEditMarker,
   onDeleteMarker,
+  onAddWaypoint,
+  onRemoveWaypoint,
   marker,
   textColor,
   bgColor,
   borderColor,
   buttonColor,
   isCurrentUserCreator,
+  isWaypoint = false,
 }) => {
   const color = useColors();
   const [isEditing, setIsEditing] = useState(false);
@@ -150,6 +156,33 @@ const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
                 {marker.longitude.toFixed(6)}
               </Text>
             </View>
+
+            {/* Waypoint buttons */}
+            {onAddWaypoint && !isWaypoint && (
+              <TouchableOpacity
+                style={[styles.waypointButton, { backgroundColor: "#10B981" }]}
+                onPress={() => {
+                  onAddWaypoint(marker);
+                  onClose();
+                }}
+              >
+                <MaterialIcons name="directions" size={20} color="white" />
+                <Text style={styles.waypointButtonText}>Add as Waypoint</Text>
+              </TouchableOpacity>
+            )}
+
+            {onRemoveWaypoint && isWaypoint && (
+              <TouchableOpacity
+                style={[styles.waypointButton, { backgroundColor: "#EF4444" }]}
+                onPress={() => {
+                  onRemoveWaypoint(marker);
+                  onClose();
+                }}
+              >
+                <MaterialIcons name="remove-circle" size={20} color="white" />
+                <Text style={styles.waypointButtonText}>Remove Waypoint</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.metaInfo}>
               <Text style={[styles.metaText, { color: textColor + "99" }]}>
@@ -378,6 +411,20 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  waypointButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#10B981",
+  },
+  waypointButtonText: {
+    color: "white",
+    fontWeight: "600",
+    marginLeft: 8,
   },
 });
 

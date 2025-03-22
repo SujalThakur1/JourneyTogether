@@ -109,6 +109,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     zIndex: 10,
+    marginHorizontal: 70,
   },
   content: {
     flex: 1,

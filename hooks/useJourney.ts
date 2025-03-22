@@ -5,18 +5,21 @@ import {
   MemberRoute,
   MemberWithLocation,
   RouteInfo,
+  CustomMarker,
 } from "../types/group";
 import {
   getDirections,
   getMemberToDestinationDirections,
   getMemberToMemberDirections,
 } from "../lib/directionsService";
+import { supabase } from "../lib/supabase";
 
 interface UseJourneyProps {
   members: MemberWithLocation[];
   groupType: "TravelToDestination" | "FollowMember";
   destination?: { latitude: number; longitude: number; name: string } | null;
   currentUserId: string;
+  groupId: number;
 }
 
 export const useJourney = ({
@@ -24,11 +27,13 @@ export const useJourney = ({
   groupType,
   destination,
   currentUserId,
+  groupId,
 }: UseJourneyProps) => {
   // Journey state
   const [journeyState, setJourneyState] = useState<JourneyState>({
     isActive: false,
     routes: [],
+    waypoints: [],
   });
 
   // Route calculations and error handling
@@ -36,6 +41,88 @@ export const useJourney = ({
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeOriginName, setRouteOriginName] = useState("");
   const [routeDestinationName, setRouteDestinationName] = useState("");
+
+  // Fetch waypoints for all members including current user
+  const fetchWaypoints = useCallback(async () => {
+    if (!groupId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("mark_location")
+        .select(
+          "mark_id, latitude, longitude, location_name, description, followed_route_by"
+        )
+        .eq("group_id", groupId);
+
+      if (error) {
+        console.error("Error fetching waypoints:", error);
+        return;
+      }
+
+      if (data) {
+        // Process waypoints for the current user
+        const userWaypoints = data
+          .filter((item) => {
+            const followers = item.followed_route_by || [];
+            return followers.includes(currentUserId);
+          })
+          .map((item) => ({
+            id: item.mark_id.toString(),
+            latitude: parseFloat(item.latitude),
+            longitude: parseFloat(item.longitude),
+            title: item.location_name || "Unnamed location",
+            description: item.description || "",
+            createdBy: "", // We don't need this for routing
+            createdAt: new Date(),
+            userId: "", // We don't need this for routing
+            followedBy: item.followed_route_by || [],
+          }));
+
+        // Update waypoints in journey state
+        setJourneyState((prev) => ({
+          ...prev,
+          waypoints: userWaypoints,
+        }));
+      }
+    } catch (error) {
+      console.error("Error in fetchWaypoints:", error);
+    }
+  }, [groupId, currentUserId]);
+
+  // Set up real-time subscription for waypoint changes
+  useEffect(() => {
+    if (!groupId) return;
+
+    // Initial fetch
+    fetchWaypoints();
+
+    // Create handler for waypoint changes
+    const handleWaypointChange = (payload: any) => {
+      console.log("Waypoint change event:", payload);
+      fetchWaypoints();
+    };
+
+    // Set up the subscription channel
+    const waypointsSubscription = supabase
+      .channel(`group-waypoints-${groupId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*", // Listen for all events (INSERT, UPDATE, DELETE)
+          schema: "public",
+          table: "mark_location",
+          filter: `group_id=eq.${groupId}`,
+        },
+        handleWaypointChange
+      )
+      .subscribe((status) => {
+        console.log(`Supabase waypoints subscription status: ${status}`);
+      });
+
+    return () => {
+      supabase.removeChannel(waypointsSubscription);
+    };
+  }, [groupId, fetchWaypoints]);
 
   // Calculate routes for all members
   const calculateRoutes = useCallback(async () => {
@@ -50,24 +137,80 @@ export const useJourney = ({
           let routeInfo: RouteInfo;
 
           if (groupType === "TravelToDestination" && destination) {
-            // Route to the specified destination
-            const result = await getMemberToDestinationDirections(
-              member.location!,
-              destination
-            );
+            // Get waypoints for this member
+            let waypoints: { latitude: number; longitude: number }[] = [];
 
-            routeInfo = result;
-
-            // Set current user's active route for display
+            // If this is the current user, use waypoints from journeyState
             if (member.id === currentUserId) {
-              setActiveRoute(result);
-              setRouteOriginName(member.username);
-              setRouteDestinationName(destination.name || "Destination");
+              waypoints = journeyState.waypoints.map((waypoint) => ({
+                latitude: waypoint.latitude,
+                longitude: waypoint.longitude,
+              }));
+            } else {
+              // For other members, fetch their waypoints from the database
+              try {
+                const { data, error } = await supabase
+                  .from("mark_location")
+                  .select("mark_id, latitude, longitude, followed_route_by")
+                  .eq("group_id", groupId)
+                  .contains("followed_route_by", [member.id]);
 
-              if (result.error) {
-                setRouteError(result.error);
-              } else {
-                setRouteError(null);
+                if (!error && data) {
+                  waypoints = data.map((item) => ({
+                    latitude: parseFloat(item.latitude),
+                    longitude: parseFloat(item.longitude),
+                  }));
+                }
+              } catch (e) {
+                console.error(
+                  `Error fetching waypoints for member ${member.id}:`,
+                  e
+                );
+              }
+            }
+
+            // If we have waypoints, use them in the route calculation
+            if (waypoints.length > 0) {
+              const result = await getDirections(
+                member.location!,
+                destination,
+                waypoints
+              );
+
+              routeInfo = result;
+
+              // Set current user's active route for display if this is the current user
+              if (member.id === currentUserId) {
+                setActiveRoute(result);
+                setRouteOriginName(member.username);
+                setRouteDestinationName(destination.name || "Destination");
+
+                if (result.error) {
+                  setRouteError(result.error);
+                } else {
+                  setRouteError(null);
+                }
+              }
+            } else {
+              // No waypoints, just calculate direct route
+              const result = await getMemberToDestinationDirections(
+                member.location!,
+                destination
+              );
+
+              routeInfo = result;
+
+              // Set current user's active route for display
+              if (member.id === currentUserId) {
+                setActiveRoute(result);
+                setRouteOriginName(member.username);
+                setRouteDestinationName(destination.name || "Destination");
+
+                if (result.error) {
+                  setRouteError(result.error);
+                } else {
+                  setRouteError(null);
+                }
               }
             }
           } else if (
@@ -154,15 +297,19 @@ export const useJourney = ({
       }));
     } catch (error) {
       console.error("Error calculating routes:", error);
-      setRouteError("Failed to calculate routes");
+      setRouteError(
+        error instanceof Error ? error.message : "Failed to calculate routes"
+      );
     }
   }, [
     journeyState.isActive,
     journeyState.followedMemberId,
+    journeyState.waypoints,
     members,
+    currentUserId,
     groupType,
     destination,
-    currentUserId,
+    groupId,
   ]);
 
   // Start journey
@@ -195,9 +342,10 @@ export const useJourney = ({
         startTime: Date.now(),
         followedMemberId,
         routes: [],
+        waypoints: journeyState.waypoints, // Preserve existing waypoints
       });
     },
-    [groupType, destination, members]
+    [groupType, destination, members, journeyState.waypoints]
   );
 
   // End journey
@@ -205,6 +353,7 @@ export const useJourney = ({
     setJourneyState({
       isActive: false,
       routes: [],
+      waypoints: [],
     });
     setActiveRoute(null);
     setRouteError(null);
@@ -226,6 +375,51 @@ export const useJourney = ({
     return () => clearInterval(intervalId);
   }, [journeyState.isActive, calculateRoutes]);
 
+  // Add waypoint to journey
+  const addWaypoint = useCallback(
+    (marker: CustomMarker) => {
+      setJourneyState((prev) => ({
+        ...prev,
+        waypoints: [...prev.waypoints, marker],
+      }));
+
+      // Force recalculate route if journey is active
+      if (journeyState.isActive) {
+        calculateRoutes();
+      }
+    },
+    [journeyState.isActive, calculateRoutes]
+  );
+
+  // Remove waypoint from journey
+  const removeWaypoint = useCallback(
+    (marker: CustomMarker) => {
+      setJourneyState((prev) => ({
+        ...prev,
+        waypoints: prev.waypoints.filter((wp) => wp.id !== marker.id),
+      }));
+
+      // Force recalculate route if journey is active
+      if (journeyState.isActive) {
+        calculateRoutes();
+      }
+    },
+    [journeyState.isActive, calculateRoutes]
+  );
+
+  // Clear all waypoints
+  const clearWaypoints = useCallback(() => {
+    setJourneyState((prev) => ({
+      ...prev,
+      waypoints: [],
+    }));
+
+    // Force recalculate route if journey is active
+    if (journeyState.isActive) {
+      calculateRoutes();
+    }
+  }, [journeyState.isActive, calculateRoutes]);
+
   return {
     journeyState,
     activeRoute,
@@ -240,5 +434,8 @@ export const useJourney = ({
         followedMemberId: memberId,
       }));
     },
+    addWaypoint,
+    removeWaypoint,
+    clearWaypoints,
   };
 };
