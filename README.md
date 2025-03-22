@@ -1,6 +1,50 @@
 # Journey - Group Travel Made Easy
 
-Journey is a mobile application designed to simplify group travel planning and coordination. With real-time location sharing, destination discovery, and group management features, Journey keeps everyone on the same page during your adventures.
+Journey is a mobile application designed to simplify group travel coordination by allowing users to share real-time locations, discover destinations, and manage travel groups. Whether you're exploring a new city with friends or coordinating a family trip, Journey keeps everyone connected.
+
+## App Screenshots
+
+### Discover Screen
+
+![Discover Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/discover.png)
+
+Browse popular destinations categorized by Jungle, Beach, Mountain, and Water. Explore featured locations like the Butterfly Rainforest at the Florida Museum of Natural History or Kirstenbosch Botanical Garden, complete with ratings and location details. You can view a homepage photo, as well as detailed images and information for each destination when you click on them.
+
+### Groups Management
+
+![Groups Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/groups.png)
+
+In the Groups Management section, you can view your current travel groups with details about group members and destinations, along with a map preview of your journey. To Join an Existing Group, simply enter the 6-digit group code provided by the group admin and join your friends' adventures. If you prefer to Create a New Group, you have two options: either travel to a specific destination as a group or follow a group member to stay together by following their lead.
+
+### Travel History
+
+![History Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/history.png)
+
+Keep track of your saved places and past trips. Easily create new groups for favorite destinations or view detailed information about previously visited locations.
+
+### User Settings
+
+![Settings Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/settings.png)
+
+Customize your app experience with appearance settings (Light/Dark/System modes), manage notification preferences, and control location sharing permissions.
+
+### Live Location Sharing
+
+![Map View](https://github.com/SujalThakur1/journey/raw/main/screenshots/map_view.png)
+
+See the real-time location of all group members on an interactive map. View distance information showing how far members are from you and from the destination.
+
+### Map Interaction
+
+![Map Interaction](https://github.com/SujalThakur1/journey/raw/main/screenshots/map_interaction.png)
+
+Add custom markers on the map using the "Tap anywhere on the map to add a marker" feature, helping you mark stop points or important locations along your journey. You can also create detailed waypoints with custom titles and descriptions to highlight key stops or locations for your travel companions.
+
+### Group Members View
+
+![Group Members](https://github.com/SujalThakur1/journey/raw/main/screenshots/group_members.png)
+
+See all members in your group with their distance from the destination. The leader can add or remove group members, identify the group leader, and track everyone's progress toward the destination.
 
 ## Features
 
@@ -8,47 +52,42 @@ Journey is a mobile application designed to simplify group travel planning and c
 
 - Share your location with group members in real-time
 - View the location of all group members on an interactive map
-- Navigate to specific members with a single tap
-
-![Real-time Location Sharing](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/real_time_location_sharing.png)
-[![Real-time Location Sharing](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/real_time_location_sharing.png)](https://link.to/full_image_1)
+- Track distances between members and to destinations
+- Add custom waypoints and markers to coordinate meetups
 
 ### 👥 Group Management
 
-- Create travel groups for specific destinations or to follow a leader
-- Join existing groups using unique group codes
-- Invite friends to join your travel groups
-- Set group types: "Travel to Destination" or "Follow Member"
-
-![Group Management](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/group_management.png)
-[![Group Management](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/group_management.png)](https://link.to/full_image_2)
+- Create travel groups with custom names and destinations
+- Join existing groups using unique 6-digit codes
+- Choose between "Travel to Destination" or "Follow Member" group types
+- View group details including member count and leader
 
 ### 🔍 Destination Discovery
 
-- Browse and search for popular destinations
-- Filter destinations by categories
-- View detailed information about each destination including ratings and images
-- Add custom destinations using Google Places integration
+- Browse popular destinations by category (Jungle, Beach, Mountain, Water)
+- View top-rated destinations with photos and ratings
+- Get detailed location information including addresses
+- Save favorite destinations for future trips
 
-![Destination Discovery](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/destination_discovery.png)
-[![Destination Discovery](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/destination_discovery.png)](https://link.to/full_image_3)
+### 📋 Travel History
 
-### 📱 User-Friendly Interface
+- Access your saved destinations
+- View past trips and locations
+- Quickly create new groups for favorite places
+- View detailed information about previously visited locations
 
-- Intuitive navigation with tab-based layout
-- Dark/Light mode support
-- Real-time notifications
-- Clean, modern UI design
+### ⚙️ Customization
 
-![User Interface](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/user_interface.png)
-[![User Interface](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/user_interface.png)](https://link.to/full_image_4)
-
+- Toggle between Light and Dark mode
+- Manage notification preferences
+- Control location services permissions
+- Customize profile settings and privacy options
 
 ## Technology Stack
 
 - **Frontend**: React Native with Expo
 - **Navigation**: Expo Router with file-based routing
-- **Maps**: React Native Maps
+- **Maps**: React Native Maps with Apple Maps integration
 - **State Management**: React Context API
 - **Authentication**: Supabase Auth
 - **Database**: Supabase
@@ -82,6 +121,7 @@ Journey is a mobile application designed to simplify group travel planning and c
 
 3. Set up environment variables
    Create a `.env` file in the root directory with the following variables:
+
    ```
    SUPABASE_URL=your_supabase_url
    SUPABASE_KEY=your_supabase_anon_key
@@ -107,39 +147,3 @@ Journey is a mobile application designed to simplify group travel planning and c
 - `/hooks`: Custom React hooks
 - `/lib`: Utility functions and services
 - `/types`: TypeScript type definitions
-
-## Features in Detail
-
-### Authentication
-
-The app provides a complete authentication system with:
-
-- User registration
-- Login
-- Profile management
-- Password reset
-
-### Location Tracking
-
-Users can:
-
-- Enable/disable location tracking
-- Share their location with group members
-- View real-time locations of other group members
-- Navigate to specific members
-
-### Group Management
-
-Create two types of groups:
-
-1. **Travel to Destination**: All members navigate to a common destination
-2. **Follow Member**: Members follow a designated leader
-
-### Map Interface
-
-The map view provides:
-
-- Current locations of all group members
-- Destination markers
-- Navigation options
-- Location history

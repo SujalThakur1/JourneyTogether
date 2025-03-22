@@ -178,22 +178,6 @@ const GroupMap: React.FC<GroupMapProps> = ({
                 </View>
               )}
             </View>
-            {/* Triangular Pointer */}
-            <View
-              style={{
-                width: 0,
-                height: 0,
-                backgroundColor: "transparent",
-                borderStyle: "solid",
-                borderLeftWidth: 6,
-                borderRightWidth: 6,
-                borderTopWidth: 12,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderTopColor: "white",
-                marginTop: -1,
-              }}
-            />
           </View>
 
           {/* Updated Callout with Member Info */}

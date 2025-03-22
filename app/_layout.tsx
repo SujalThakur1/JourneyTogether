@@ -59,7 +59,7 @@ export default function RootLayout() {
       .eq("id", user.id)
       .maybeSingle();
     if (error) {
-      console.error("Error fetching user details:", error.message);
+      console.log("Error fetching user details:", error.message);
     } else {
       setUserDetails(data);
     }
