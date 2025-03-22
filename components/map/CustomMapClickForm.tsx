@@ -21,6 +21,7 @@ interface CustomMapClickFormProps {
   onDeleteMarker: (markerId: string, userId: string) => void;
   onAddWaypoint?: (marker: CustomMarker) => void;
   onRemoveWaypoint?: (marker: CustomMarker) => void;
+  onStartJourney?: () => void;
   marker: CustomMarker;
   textColor: string;
   bgColor: string;
@@ -28,6 +29,7 @@ interface CustomMapClickFormProps {
   buttonColor: string;
   isCurrentUserCreator: boolean;
   isWaypoint?: boolean;
+  isLeader?: boolean;
 }
 
 const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
@@ -37,6 +39,7 @@ const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
   onDeleteMarker,
   onAddWaypoint,
   onRemoveWaypoint,
+  onStartJourney,
   marker,
   textColor,
   bgColor,
@@ -44,6 +47,7 @@ const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
   buttonColor,
   isCurrentUserCreator,
   isWaypoint = false,
+  isLeader = false,
 }) => {
   const color = useColors();
   const [isEditing, setIsEditing] = useState(false);
@@ -181,6 +185,25 @@ const CustomMapClickForm: React.FC<CustomMapClickFormProps> = ({
               >
                 <MaterialIcons name="remove-circle" size={20} color="white" />
                 <Text style={styles.waypointButtonText}>Remove Waypoint</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Navigation button for waypoints */}
+            {isWaypoint && onStartJourney && (
+              <TouchableOpacity
+                style={[
+                  styles.waypointButton,
+                  { backgroundColor: "#3B82F6", marginTop: 8 },
+                ]}
+                onPress={() => {
+                  onStartJourney();
+                  onClose();
+                }}
+              >
+                <MaterialIcons name="navigation" size={20} color="white" />
+                <Text style={styles.waypointButtonText}>
+                  {isLeader ? "Navigate to Waypoint" : "Navigate to Leader"}
+                </Text>
               </TouchableOpacity>
             )}
 

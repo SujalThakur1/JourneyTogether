@@ -136,7 +136,7 @@ export const useJourney = ({
         try {
           let routeInfo: RouteInfo;
 
-          if (groupType === "TravelToDestination" && destination) {
+          if (groupType === "TravelToDestination") {
             // Get waypoints for this member
             let waypoints: { latitude: number; longitude: number }[] = [];
 
@@ -169,12 +169,23 @@ export const useJourney = ({
               }
             }
 
-            // If we have waypoints, use them in the route calculation
+            // Handle waypoint-only navigation (no destination)
             if (waypoints.length > 0) {
+              // If no destination but we have waypoints, use the last waypoint as destination
+              const effectiveDestination = destination || {
+                latitude: waypoints[waypoints.length - 1].latitude,
+                longitude: waypoints[waypoints.length - 1].longitude,
+                name: "Last Waypoint",
+              };
+
+              const waypointsForRoute = destination
+                ? waypoints
+                : waypoints.slice(0, -1); // Remove last waypoint if it's being used as destination
+
               const result = await getDirections(
                 member.location!,
-                destination,
-                waypoints
+                effectiveDestination,
+                waypointsForRoute
               );
 
               routeInfo = result;
@@ -183,7 +194,9 @@ export const useJourney = ({
               if (member.id === currentUserId) {
                 setActiveRoute(result);
                 setRouteOriginName(member.username);
-                setRouteDestinationName(destination.name || "Destination");
+                setRouteDestinationName(
+                  destination?.name || "Waypoint Destination"
+                );
 
                 if (result.error) {
                   setRouteError(result.error);
@@ -191,8 +204,8 @@ export const useJourney = ({
                   setRouteError(null);
                 }
               }
-            } else {
-              // No waypoints, just calculate direct route
+            } else if (destination) {
+              // No waypoints, just calculate direct route to destination if it exists
               const result = await getMemberToDestinationDirections(
                 member.location!,
                 destination
@@ -212,6 +225,13 @@ export const useJourney = ({
                   setRouteError(null);
                 }
               }
+            } else {
+              // No waypoints and no destination
+              if (member.id === currentUserId) {
+                setRouteError("No destination or waypoints set");
+                setActiveRoute(null);
+              }
+              continue;
             }
           } else if (
             groupType === "FollowMember" &&
@@ -226,10 +246,31 @@ export const useJourney = ({
               throw new Error(`Cannot find location for member to follow`);
             }
 
-            const result = await getMemberToMemberDirections(
-              member.location!,
-              followedMember.location
-            );
+            // Get waypoints for this member
+            let waypoints: { latitude: number; longitude: number }[] = [];
+
+            // If this is the current user, use waypoints from journeyState
+            if (member.id === currentUserId) {
+              waypoints = journeyState.waypoints.map((waypoint) => ({
+                latitude: waypoint.latitude,
+                longitude: waypoint.longitude,
+              }));
+            }
+
+            // If we have waypoints, include them in the route
+            let result;
+            if (waypoints.length > 0) {
+              result = await getDirections(
+                member.location!,
+                followedMember.location,
+                waypoints
+              );
+            } else {
+              result = await getMemberToMemberDirections(
+                member.location!,
+                followedMember.location
+              );
+            }
 
             routeInfo = result;
 

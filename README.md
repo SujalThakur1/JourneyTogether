@@ -1,50 +1,145 @@
-# Welcome to your Expo app 👋
+# Journey - Group Travel Made Easy
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Journey is a mobile application designed to simplify group travel planning and coordination. With real-time location sharing, destination discovery, and group management features, Journey keeps everyone on the same page during your adventures.
 
-## Get started
+## Features
 
-1. Install dependencies
+### 🗺️ Real-time Location Sharing
+
+- Share your location with group members in real-time
+- View the location of all group members on an interactive map
+- Navigate to specific members with a single tap
+
+![Real-time Location Sharing](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/real_time_location_sharing.png)
+[![Real-time Location Sharing](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/real_time_location_sharing.png)](https://link.to/full_image_1)
+
+### 👥 Group Management
+
+- Create travel groups for specific destinations or to follow a leader
+- Join existing groups using unique group codes
+- Invite friends to join your travel groups
+- Set group types: "Travel to Destination" or "Follow Member"
+
+![Group Management](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/group_management.png)
+[![Group Management](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/group_management.png)](https://link.to/full_image_2)
+
+### 🔍 Destination Discovery
+
+- Browse and search for popular destinations
+- Filter destinations by categories
+- View detailed information about each destination including ratings and images
+- Add custom destinations using Google Places integration
+
+![Destination Discovery](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/destination_discovery.png)
+[![Destination Discovery](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/destination_discovery.png)](https://link.to/full_image_3)
+
+### 📱 User-Friendly Interface
+
+- Intuitive navigation with tab-based layout
+- Dark/Light mode support
+- Real-time notifications
+- Clean, modern UI design
+
+![User Interface](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/user_interface.png)
+[![User Interface](https://github.com/SujalThakur1/JourneyTogether/blob/main/images/user_interface.png)](https://link.to/full_image_4)
+
+
+## Technology Stack
+
+- **Frontend**: React Native with Expo
+- **Navigation**: Expo Router with file-based routing
+- **Maps**: React Native Maps
+- **State Management**: React Context API
+- **Authentication**: Supabase Auth
+- **Database**: Supabase
+- **Location Services**: Expo Location
+- **Places API**: Google Places API
+- **Storage**: AsyncStorage for local caching
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14 or newer)
+- npm or yarn
+- Expo CLI
+- iOS Simulator or Android Emulator (for local development)
+
+### Installation
+
+1. Clone the repository
+
+   ```bash
+   git clone [https://github.com/SujalThakur1/JourneyTogether.git]
+   cd JourneyTogether
+   ```
+
+2. Install dependencies
 
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-    npx expo start
+3. Set up environment variables
+   Create a `.env` file in the root directory with the following variables:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_KEY=your_supabase_anon_key
+   GOOGLE_PLACES_API_KEY=your_google_places_api_key
    ```
 
-In the output, you'll find options to open the app in a
+4. Start the development server
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   npx expo start
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+5. Launch the app on your preferred platform:
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan the QR code with Expo Go app on your physical device
 
-## Get a fresh project
+## Project Structure
 
-When you're ready, run:
+- `/app`: Main application screens organized by routing structure
+- `/components`: Reusable UI components
+- `/contexts`: React context providers for state management
+- `/hooks`: Custom React hooks
+- `/lib`: Utility functions and services
+- `/types`: TypeScript type definitions
 
-```bash
-npm run reset-project
-```
+## Features in Detail
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Authentication
 
-## Learn more
+The app provides a complete authentication system with:
 
-To learn more about developing your project with Expo, look at the following resources:
+- User registration
+- Login
+- Profile management
+- Password reset
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Location Tracking
 
-## Join the community
+Users can:
 
-Join our community of developers creating universal apps.
+- Enable/disable location tracking
+- Share their location with group members
+- View real-time locations of other group members
+- Navigate to specific members
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Group Management
+
+Create two types of groups:
+
+1. **Travel to Destination**: All members navigate to a common destination
+2. **Follow Member**: Members follow a designated leader
+
+### Map Interface
+
+The map view provides:
+
+- Current locations of all group members
+- Destination markers
+- Navigation options
+- Location history

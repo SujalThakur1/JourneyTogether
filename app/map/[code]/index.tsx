@@ -769,19 +769,38 @@ const GroupMapScreen = () => {
                   group.group_type === "FollowMember" &&
                   !journeyState.followedMemberId
                 ) {
-                  // Find a non-current user to follow
-                  const otherMembers = membersWithLocations.filter(
-                    (m) => m.id !== userDetails?.id && m.location
-                  );
-
-                  if (otherMembers.length > 0) {
-                    // Start following the first member with location
-                    startJourney(otherMembers[0].id);
+                  if (isUserLeader()) {
+                    // Leaders can start journey without following anyone
+                    startJourney();
                   } else {
-                    // No one to follow
-                    alert(
-                      "No members available to follow. Make sure other members are online."
+                    // Non-leader automatically follows the leader
+                    const leader = membersWithLocations.find(
+                      (m) => m.id === group.leader_id && m.location
                     );
+
+                    if (leader) {
+                      startJourney(leader.id);
+                    } else {
+                      alert(
+                        "Leader is not online. Wait for the leader to come online and accept your request."
+                      );
+                    }
+                  }
+                } else if (group.group_type === "TravelToDestination") {
+                  // For TravelToDestination, leaders need either a destination or waypoints
+                  if (
+                    isUserLeader() &&
+                    !group.destination_id &&
+                    journeyState.waypoints.length === 0
+                  ) {
+                    Alert.alert(
+                      "No Destination Set",
+                      "There is no destination set for this journey. Add waypoints on the map to create a route.",
+                      [{ text: "OK" }]
+                    );
+                  } else {
+                    // Start journey with either destination or waypoints
+                    startJourney();
                   }
                 } else {
                   // Regular destination journey or follow journey with member already selected
@@ -853,6 +872,24 @@ const GroupMapScreen = () => {
                 onDeleteMarker={deleteMarker}
                 onAddWaypoint={handleAddWaypoint}
                 onRemoveWaypoint={handleRemoveWaypoint}
+                onStartJourney={() => {
+                  if (isUserLeader()) {
+                    // Leader starts a navigation journey without following anyone
+                    startJourney();
+                  } else {
+                    // Regular member follows the leader
+                    const leader = membersWithLocations.find(
+                      (m) => m.id === group.leader_id
+                    );
+                    if (leader && leader.location) {
+                      startJourney(leader.id);
+                    } else {
+                      alert(
+                        "Leader is not online. Wait for the leader to come online."
+                      );
+                    }
+                  }
+                }}
                 marker={selectedMarker!}
                 bgColor={cardBgColor}
                 textColor={textColor}
@@ -866,6 +903,7 @@ const GroupMapScreen = () => {
                 isWaypoint={
                   selectedMarker ? isUserWaypoint(selectedMarker.id) : false
                 }
+                isLeader={isUserLeader()}
               />
 
               {/* 
@@ -875,6 +913,8 @@ const GroupMapScreen = () => {
                 - If journey is active, route is recalculated including the waypoint
                 - Waypoints are displayed in JourneyControls component
                 - Users can clear all waypoints using the Clear All button
+                - Leader can start navigation with the waypoint
+                - Other members can navigate to the leader through the waypoint
               */}
             </>
           )}

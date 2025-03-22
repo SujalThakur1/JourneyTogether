@@ -64,7 +64,22 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   const handleStartJourney = () => {
     if (isFollowJourney && !followedMemberId && members.length > 1) {
       // If it's a follow journey and no member is selected yet
-      setShowMembersList(true);
+      if (isLeader) {
+        // Leaders should just start the journey without selecting members
+        onJourneyStart();
+      } else {
+        // Non-leaders automatically follow the leader
+        const leader = members.find((m) => m.isLeader);
+        if (leader && leader.location) {
+          onFollowMember(leader.id);
+          onJourneyStart();
+        } else {
+          Alert.alert(
+            "Cannot Start Journey",
+            "The leader is not online or their location is not available."
+          );
+        }
+      }
     } else {
       onJourneyStart();
     }
@@ -113,7 +128,11 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
               color={colors.textColor}
             />
             <Text style={[styles.buttonText, { color: colors.textColor }]}>
-              {isFollowJourney ? "Follow Member" : "Start Journey"}
+              {isFollowJourney
+                ? isLeader
+                  ? "Start Journey"
+                  : "Follow Leader"
+                : "Start Journey"}
             </Text>
           </TouchableOpacity>
         )}
@@ -194,7 +213,7 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
               style={[styles.modalHeader, { borderBottomColor: borderColor }]}
             >
               <Text style={[styles.modalTitle, { color: textColor }]}>
-                {isLeader ? "Manage Members" : "Select Member to Follow"}
+                {isLeader ? "Manage Members" : "Select Leader to Follow"}
               </Text>
               <TouchableOpacity onPress={() => setShowMembersList(false)}>
                 <MaterialIcons name="close" size={24} color={textColor} />
