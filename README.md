@@ -1,4 +1,4 @@
-# Journey - Group Travel Made Easy
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/main.png?raw=true" alt="image" width="600" height="400"># Journey - Group Travel Made Easy
 
 Journey is a mobile application designed to simplify group travel coordination by allowing users to share real-time locations, discover destinations, and manage travel groups. Whether you're exploring a new city with friends or coordinating a family trip, Journey keeps everyone connected.
 
@@ -6,7 +6,7 @@ Journey is a mobile application designed to simplify group travel coordination b
 
 ### Discover Screen
 
-![Discover Screen](https://github.com/SujalThakur1/JourneyTogether/blob/main/337shots_so.png?raw=true)
+![Discover Screen](https://github.com/SujalThakur1/JourneyTogether/blob/main/homepage.png?raw=true)
 
 Browse popular destinations categorized by Jungle, Beach, Mountain, and Water. Explore featured locations like the Butterfly Rainforest at the Florida Museum of Natural History or Kirstenbosch Botanical Garden, complete with ratings and location details. You can view a homepage photo, as well as detailed images and information for each destination when you click on them.
 
@@ -42,7 +42,7 @@ Add custom markers on the map using the "Tap anywhere on the map to add a marker
 
 ### Group Members View
 
-![Group Members](https://github.com/SujalThakur1/journey/raw/main/screenshots/group_members.png)
+![Group Members](https://github.com/SujalThakur1/JourneyTogether/blob/main/337shots_so.png?raw=true)
 
 See all members in your group with their distance from the destination. The leader can add or remove group members, identify the group leader, and track everyone's progress toward the destination.
 
