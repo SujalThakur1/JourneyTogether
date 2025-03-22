@@ -6,7 +6,7 @@ Journey is a mobile application designed to simplify group travel coordination b
 
 ### Discover Screen
 
-![Discover Screen](https://github.com/SujalThakur1/journey/raw/main/screenshots/discover.png)
+![Discover Screen](https://github.com/SujalThakur1/JourneyTogether/blob/main/337shots_so.png?raw=true)
 
 Browse popular destinations categorized by Jungle, Beach, Mountain, and Water. Explore featured locations like the Butterfly Rainforest at the Florida Museum of Natural History or Kirstenbosch Botanical Garden, complete with ratings and location details. You can view a homepage photo, as well as detailed images and information for each destination when you click on them.
 
