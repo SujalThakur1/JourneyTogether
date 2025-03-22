@@ -1,4 +1,5 @@
-<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/main.png?raw=true" alt="image" width="300" height="400"># Journey - Group Travel Made Easy
+<img src="https://github.com/SujalThakur1/JourneyTogether/blob/main/main.png?raw=true" alt="image" width="300" height="400">
+# Journey - Group Travel Made Easy
 
 Journey is a mobile application designed to simplify group travel coordination by allowing users to share real-time locations, discover destinations, and manage travel groups. Whether you're exploring a new city with friends or coordinating a family trip, Journey keeps everyone connected.
 
