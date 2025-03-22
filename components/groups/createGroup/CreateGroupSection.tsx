@@ -27,7 +27,11 @@ interface FormErrors {
   members?: string;
 }
 
-const CreateGroupSection = () => {
+interface CreateGroupSectionProps {
+  onClose?: () => void;
+}
+
+const CreateGroupSection: React.FC<CreateGroupSectionProps> = ({ onClose }) => {
   const {
     groupName,
     setGroupName,
@@ -124,8 +128,23 @@ const CreateGroupSection = () => {
       const hasLocationPermission = await checkAndRequestLocationPermission(
         // Success callback
         async () => {
-          await handleCreateGroup();
-          setIsLoading(false);
+          try {
+            await handleCreateGroup();
+            // Reset the form after successful creation
+            resetGroupForms();
+            // Close the bottom sheet if onClose prop is provided
+            if (onClose) {
+              onClose();
+            }
+            setIsLoading(false);
+          } catch (error) {
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : "Failed to create group. Please try again.";
+            setErrors({ groupName: errorMessage });
+            setIsLoading(false);
+          }
         },
         // Cancel callback
         () => {
@@ -154,7 +173,10 @@ const CreateGroupSection = () => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.bgColor }]}>
+    <ScrollView
+      keyboardShouldPersistTaps="always"
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
       <View style={styles.headerContainer}>
         <Text style={[styles.header, { color: colors.textColor }]}>
           Create New Group

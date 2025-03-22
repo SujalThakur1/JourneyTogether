@@ -13,17 +13,24 @@ import {
   Share,
   Alert,
   Platform,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import { useColors } from "../../contexts/ColorContext";
-import { useApp } from "../../contexts/AppContext";
-import { useGroups } from "../../contexts/GroupsContext";
-import { supabase } from "../../lib/supabase";
+import {
+  Ionicons,
+  MaterialIcons,
+  FontAwesome5,
+  FontAwesome,
+} from "@expo/vector-icons";
+import { useColors } from "@/contexts/ColorContext";
+import { useApp } from "@/contexts/AppContext";
+import { useGroups } from "@/contexts/GroupsContext";
+import { supabase } from "@/lib/supabase";
 import MapView, { Marker } from "react-native-maps";
-import { ToastManager } from "../components/ui/toast";
-import CreateGroupBottomSheet from "../../components/Sheet/bottomSheet";
+import { ToastManager } from "@/components/ui/toast";
+import CreateGroupBottomSheet from "@/components/Sheet/bottomSheet";
+import { getPlaceDetailsByName, PlaceDetails } from "@/lib/placesService";
 
 const { width } = Dimensions.get("window");
 
@@ -39,25 +46,6 @@ interface Destination {
   category_id: number;
 }
 
-// Dummy data for destination details
-const dummyDetails = {
-  description:
-    "A breathtaking destination with stunning views and rich cultural heritage. Perfect for adventure seekers and those looking to explore natural wonders.",
-  activities: [
-    "Hiking",
-    "Photography",
-    "Local Cuisine",
-    "Cultural Tours",
-    "Wildlife Watching",
-  ],
-  bestTimeToVisit: "March to June and September to November",
-  averageCost: "$50-100 per day",
-  localTips:
-    "Visit early in the morning to avoid crowds. Don't miss the local market on weekends for authentic souvenirs.",
-  difficulty: "Moderate",
-  duration: "3-5 days recommended",
-};
-
 export default function DestinationDetail() {
   const { id } = useLocalSearchParams();
   const colors = useColors();
@@ -70,7 +58,9 @@ export default function DestinationDetail() {
   const [destinationData, setDestinationData] = useState<Destination | null>(
     null
   );
+  const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [placesLoading, setPlacesLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -80,6 +70,12 @@ export default function DestinationDetail() {
     fetchDestinationDetails();
     checkIfSaved();
   }, [id]);
+
+  useEffect(() => {
+    if (destinationData) {
+      fetchPlaceDetails();
+    }
+  }, [destinationData]);
 
   const fetchDestinationDetails = async () => {
     try {
@@ -99,6 +95,26 @@ export default function DestinationDetail() {
       console.error("Error:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPlaceDetails = async () => {
+    if (!destinationData) return;
+    setPlacesLoading(true);
+
+    try {
+      const details = await getPlaceDetailsByName(
+        destinationData.name,
+        destinationData.location
+      );
+
+      if (details) {
+        setPlaceDetails(details);
+      }
+    } catch (error) {
+      console.error("Error fetching place details:", error);
+    } finally {
+      setPlacesLoading(false);
     }
   };
 
@@ -197,6 +213,26 @@ export default function DestinationDetail() {
     }
   };
 
+  const openWebsite = (url: string) => {
+    Linking.openURL(url).catch((err) => {
+      console.error("Error opening URL:", err);
+      ToastManager.show({
+        message: "Could not open website",
+        type: "error",
+      });
+    });
+  };
+
+  const callPhoneNumber = (phoneNumber: string) => {
+    Linking.openURL(`tel:${phoneNumber}`).catch((err) => {
+      console.error("Error opening phone:", err);
+      ToastManager.show({
+        message: "Could not make phone call",
+        type: "error",
+      });
+    });
+  };
+
   if (loading) {
     return (
       <View
@@ -270,7 +306,12 @@ export default function DestinationDetail() {
         <View style={styles.imageGalleryContainer}>
           <FlatList
             data={
-              destinationData.images && destinationData.images.length > 0
+              // Use Google Places photos if available, otherwise fall back to the destination images
+              placeDetails &&
+              placeDetails.photos &&
+              placeDetails.photos.length > 0
+                ? placeDetails.photos
+                : destinationData.images && destinationData.images.length > 0
                 ? destinationData.images
                 : [destinationData.primary_image]
             }
@@ -299,7 +340,11 @@ export default function DestinationDetail() {
 
           {/* Pagination dots */}
           <View style={styles.paginationContainer}>
-            {(destinationData.images && destinationData.images.length > 0
+            {(placeDetails &&
+            placeDetails.photos &&
+            placeDetails.photos.length > 0
+              ? placeDetails.photos
+              : destinationData.images && destinationData.images.length > 0
               ? destinationData.images
               : [destinationData.primary_image]
             ).map((_, index) => {
@@ -345,6 +390,7 @@ export default function DestinationDetail() {
             { backgroundColor: colors.cardBgColor },
           ]}
         >
+          {/* Title and Rating */}
           <View style={styles.titleRow}>
             <View>
               <Text
@@ -358,148 +404,296 @@ export default function DestinationDetail() {
                   { color: colors.mutedTextColor },
                 ]}
               >
-                {destinationData.location}
+                {placeDetails?.address || destinationData.location}
               </Text>
             </View>
 
             <View style={styles.ratingContainer}>
               <Text style={[styles.ratingText, { color: colors.textColor }]}>
                 <Text style={{ color: colors.accentColor }}>★</Text>{" "}
-                {destinationData.rating}
+                {placeDetails?.rating || destinationData.rating}
               </Text>
             </View>
           </View>
 
+          {/* Contact Information */}
+          {(placeDetails?.website) && (
+            <View style={styles.contactContainer}>
+              {placeDetails?.website && (
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={() => openWebsite(placeDetails.website || "")}
+                >
+                  <FontAwesome
+                    name="globe"
+                    size={16}
+                    color={colors.accentColor}
+                  />
+                  <Text
+                    style={[styles.contactText, { color: colors.accentColor }]}
+                  >
+                    Website
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Google Places Loading Indicator */}
+          {placesLoading && (
+            <View style={styles.placesLoadingContainer}>
+              <ActivityIndicator size="small" color={colors.accentColor} />
+              <Text
+                style={[
+                  styles.placesLoadingText,
+                  { color: colors.mutedTextColor },
+                ]}
+              >
+                Fetching Google Places data...
+              </Text>
+            </View>
+          )}
+
           {/* Description */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
-              About
-            </Text>
-            <Text
-              style={[styles.descriptionText, { color: colors.mutedTextColor }]}
-            >
-              {dummyDetails.description}
-            </Text>
-          </View>
+          {placeDetails?.description && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
+                About
+              </Text>
+              <Text
+                style={[
+                  styles.descriptionText,
+                  { color: colors.mutedTextColor },
+                ]}
+              >
+                {placeDetails.description}
+              </Text>
+            </View>
+          )}
+
+          {/* Opening Hours */}
+          {placeDetails?.openingHours &&
+            placeDetails.openingHours.length > 0 && (
+              <View style={styles.section}>
+                <Text
+                  style={[styles.sectionTitle, { color: colors.textColor }]}
+                >
+                  Opening Hours
+                </Text>
+                {placeDetails.openingHours.map((hours, index) => (
+                  <Text
+                    key={`hours-${index}`}
+                    style={[styles.hoursText, { color: colors.mutedTextColor }]}
+                  >
+                    {hours}
+                  </Text>
+                ))}
+              </View>
+            )}
 
           {/* Activities */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
-              Activities
-            </Text>
-            <View style={styles.activitiesContainer}>
-              {dummyDetails.activities.map((activity, index) => (
-                <View
-                  key={`activity-${index}`}
-                  style={[
-                    styles.activityTag,
-                    { backgroundColor: `${colors.accentColor}20` },
-                  ]}
-                >
-                  <Text
-                    style={[styles.activityText, { color: colors.accentColor }]}
+          {placeDetails?.activities && placeDetails.activities.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
+                Activities
+              </Text>
+              <View style={styles.activitiesContainer}>
+                {placeDetails.activities.map((activity, index) => (
+                  <View
+                    key={`activity-${index}`}
+                    style={[
+                      styles.activityTag,
+                      { backgroundColor: `${colors.accentColor}20` },
+                    ]}
                   >
-                    {activity}
+                    <Text
+                      style={[
+                        styles.activityText,
+                        { color: colors.accentColor },
+                      ]}
+                    >
+                      {activity}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Additional Info */}
+          {(placeDetails?.bestTimeToVisit ||
+            placeDetails?.averageCost ||
+            placeDetails?.difficulty ||
+            placeDetails?.duration) && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
+                Travel Information
+              </Text>
+
+              <View style={styles.infoRow}>
+                {placeDetails?.bestTimeToVisit && (
+                  <View style={styles.infoItem}>
+                    <MaterialIcons
+                      name="calendar-today"
+                      size={20}
+                      color={colors.accentColor}
+                    />
+                    <View style={styles.infoTextContainer}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          { color: colors.mutedTextColor },
+                        ]}
+                      >
+                        Best Time
+                      </Text>
+                      <Text
+                        style={[styles.infoValue, { color: colors.textColor }]}
+                      >
+                        {placeDetails.bestTimeToVisit}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {placeDetails?.averageCost && (
+                  <View style={styles.infoItem}>
+                    <MaterialIcons
+                      name="attach-money"
+                      size={20}
+                      color={colors.accentColor}
+                    />
+                    <View style={styles.infoTextContainer}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          { color: colors.mutedTextColor },
+                        ]}
+                      >
+                        Average Cost
+                      </Text>
+                      <Text
+                        style={[styles.infoValue, { color: colors.textColor }]}
+                      >
+                        {placeDetails.averageCost}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.infoRow}>
+                {placeDetails?.difficulty && (
+                  <View style={styles.infoItem}>
+                    <FontAwesome5
+                      name="hiking"
+                      size={20}
+                      color={colors.accentColor}
+                    />
+                    <View style={styles.infoTextContainer}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          { color: colors.mutedTextColor },
+                        ]}
+                      >
+                        Difficulty
+                      </Text>
+                      <Text
+                        style={[styles.infoValue, { color: colors.textColor }]}
+                      >
+                        {placeDetails.difficulty}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {placeDetails?.duration && (
+                  <View style={styles.infoItem}>
+                    <MaterialIcons
+                      name="timer"
+                      size={20}
+                      color={colors.accentColor}
+                    />
+                    <View style={styles.infoTextContainer}>
+                      <Text
+                        style={[
+                          styles.infoLabel,
+                          { color: colors.mutedTextColor },
+                        ]}
+                      >
+                        Duration
+                      </Text>
+                      <Text
+                        style={[styles.infoValue, { color: colors.textColor }]}
+                      >
+                        {placeDetails.duration}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Local Tips */}
+          {placeDetails?.localTips && placeDetails.localTips.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
+                Local Tips
+              </Text>
+              {placeDetails.localTips.map((tip, index) => (
+                <View key={`tip-${index}`} style={styles.tipContainer}>
+                  <MaterialIcons
+                    name="format-quote"
+                    size={20}
+                    color={colors.accentColor}
+                  />
+                  <Text
+                    style={[styles.tipText, { color: colors.mutedTextColor }]}
+                  >
+                    {tip}
                   </Text>
                 </View>
               ))}
             </View>
-          </View>
+          )}
 
-          {/* Additional Info */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
-              Travel Information
-            </Text>
-
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <MaterialIcons
-                  name="calendar-today"
-                  size={20}
-                  color={colors.accentColor}
-                />
-                <View style={styles.infoTextContainer}>
+          {/* Reviews */}
+          {placeDetails?.reviews && placeDetails.reviews.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
+                Reviews
+              </Text>
+              {placeDetails.reviews.slice(0, 3).map((review, index) => (
+                <View key={`review-${index}`} style={styles.reviewContainer}>
+                  <View style={styles.reviewHeader}>
+                    <Text
+                      style={[styles.reviewAuthor, { color: colors.textColor }]}
+                    >
+                      {review.authorName}
+                    </Text>
+                    <View style={styles.reviewRating}>
+                      <Text style={{ color: colors.accentColor }}>
+                        {"★".repeat(Math.floor(review.rating))}
+                        <Text style={{ color: colors.mutedTextColor }}>
+                          {"★".repeat(5 - Math.floor(review.rating))}
+                        </Text>
+                      </Text>
+                    </View>
+                  </View>
                   <Text
-                    style={[styles.infoLabel, { color: colors.mutedTextColor }]}
+                    style={[
+                      styles.reviewText,
+                      { color: colors.mutedTextColor },
+                    ]}
                   >
-                    Best Time
-                  </Text>
-                  <Text style={[styles.infoValue, { color: colors.textColor }]}>
-                    {dummyDetails.bestTimeToVisit}
+                    {review.text}
                   </Text>
                 </View>
-              </View>
-
-              <View style={styles.infoItem}>
-                <MaterialIcons
-                  name="attach-money"
-                  size={20}
-                  color={colors.accentColor}
-                />
-                <View style={styles.infoTextContainer}>
-                  <Text
-                    style={[styles.infoLabel, { color: colors.mutedTextColor }]}
-                  >
-                    Average Cost
-                  </Text>
-                  <Text style={[styles.infoValue, { color: colors.textColor }]}>
-                    {dummyDetails.averageCost}
-                  </Text>
-                </View>
-              </View>
+              ))}
             </View>
-
-            <View style={styles.infoRow}>
-              <View style={styles.infoItem}>
-                <FontAwesome5
-                  name="hiking"
-                  size={20}
-                  color={colors.accentColor}
-                />
-                <View style={styles.infoTextContainer}>
-                  <Text
-                    style={[styles.infoLabel, { color: colors.mutedTextColor }]}
-                  >
-                    Difficulty
-                  </Text>
-                  <Text style={[styles.infoValue, { color: colors.textColor }]}>
-                    {dummyDetails.difficulty}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoItem}>
-                <MaterialIcons
-                  name="timer"
-                  size={20}
-                  color={colors.accentColor}
-                />
-                <View style={styles.infoTextContainer}>
-                  <Text
-                    style={[styles.infoLabel, { color: colors.mutedTextColor }]}
-                  >
-                    Duration
-                  </Text>
-                  <Text style={[styles.infoValue, { color: colors.textColor }]}>
-                    {dummyDetails.duration}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Local Tips */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textColor }]}>
-              Local Tips
-            </Text>
-            <Text
-              style={[styles.descriptionText, { color: colors.mutedTextColor }]}
-            >
-              {dummyDetails.localTips}
-            </Text>
-          </View>
+          )}
 
           {/* Map */}
           {destinationData.latitude && destinationData.longitude && (
@@ -560,7 +754,7 @@ export default function DestinationDetail() {
   );
 }
 
-// Styles remain unchanged
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -659,6 +853,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
   },
+  contactContainer: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  contactButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  contactText: {
+    marginLeft: 6,
+    fontWeight: "500",
+  },
+  placesLoadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 8,
+  },
+  placesLoadingText: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
   ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -678,6 +902,10 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 16,
     lineHeight: 24,
+  },
+  hoursText: {
+    fontSize: 14,
+    lineHeight: 22,
   },
   activitiesContainer: {
     flexDirection: "row",
@@ -752,5 +980,42 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 16,
     marginLeft: 8,
+  },
+  tipContainer: {
+    flexDirection: "row",
+    marginBottom: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "flex-start",
+  },
+  tipText: {
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+    marginLeft: 8,
+    fontStyle: "italic",
+  },
+  reviewContainer: {
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 8,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  reviewAuthor: {
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  reviewRating: {
+    flexDirection: "row",
+  },
+  reviewText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

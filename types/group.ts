@@ -10,6 +10,7 @@ export interface Group {
   leader_id: string;
   group_members: string[];
   created_at: string;
+  created_by: string;
   request?: RequestMember[];
 }
 
@@ -68,6 +69,8 @@ export interface CustomMarker {
   description: string;
   createdBy: string;
   createdAt: Date;
+  userId: string;
+  followedBy?: string[]; // Array of user IDs that use this marker as a waypoint
 }
 
 export interface JourneyState {
@@ -75,4 +78,5 @@ export interface JourneyState {
   startTime?: number;
   followedMemberId?: string;
   routes: MemberRoute[];
+  waypoints: CustomMarker[];
 }

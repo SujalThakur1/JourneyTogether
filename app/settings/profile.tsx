@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "@/contexts/AppContext";
@@ -15,7 +16,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
 import Avatar from "@/components/Account/Avatar";
-import { useColorModeContext } from "@/contexts/ColorModeContext";
+import { useColors } from "@/contexts/ColorContext"; // Import the new hook
 
 export default function ProfileSettings() {
   const router = useRouter();
@@ -31,22 +32,8 @@ export default function ProfileSettings() {
     avatar_url: userDetails?.avatar_url || "",
   });
 
-  // Theme colors using useColorModeContext
-  const { effectiveColorMode } = useColorModeContext();
-  const isDark = effectiveColorMode === "dark";
-  const themeColors = {
-    bgColor: isDark ? "#1F2937" : "white",
-    cardBgColor: isDark ? "#374151" : "#F9FAFB",
-    borderColor: isDark ? "#4B5563" : "#E5E7EB",
-    textColor: isDark ? "#F9FAFB" : "black",
-    subTextColor: isDark ? "#9CA3AF" : "#6B7280",
-    accentColor: "#ED851B", // Consistent across modes
-    inputBgColor: isDark ? "#374151" : "white",
-    primaryColor: isDark ? "#FFFFFF" : "#000000",
-    labelColor: isDark ? "#FFFFFF" : "#000000",
-    pressedAccentColor: isDark ? "#F09A3A" : "#D67A18",
-    genderOptionBg: isDark ? "#333333" : "#F0EDE8",
-  };
+  // Use the colors from ColorContext
+  const colors = useColors();
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -111,17 +98,17 @@ export default function ProfileSettings() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.bgColor }]}>
-      <View
-        style={[styles.header, { borderBottomColor: themeColors.borderColor }]}
-      >
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.bgColor }]}
+    >
+      <View style={[styles.header, { borderBottomColor: colors.borderColor }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Ionicons name="arrow-back" size={24} color={themeColors.textColor} />
+          <Ionicons name="arrow-back" size={24} color={colors.textColor} />
         </TouchableOpacity>
-        <Text style={[styles.heading, { color: themeColors.textColor }]}>
+        <Text style={[styles.heading, { color: colors.textColor }]}>
           Profile Settings
         </Text>
       </View>
@@ -145,14 +132,14 @@ export default function ProfileSettings() {
             style={[
               styles.formCard,
               {
-                backgroundColor: themeColors.cardBgColor,
-                borderColor: themeColors.borderColor,
+                backgroundColor: colors.cardBgColor,
+                borderColor: colors.cardBorderColor,
               },
             ]}
           >
             {/* Username */}
             <View style={styles.formControl}>
-              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+              <Text style={[styles.label, { color: colors.textColor }]}>
                 Username
               </Text>
               <PaperTextInput
@@ -162,11 +149,12 @@ export default function ProfileSettings() {
                 }
                 mode="outlined"
                 style={styles.input}
-                textColor={themeColors.textColor}
+                textColor={colors.inputTextColor}
                 theme={{
                   colors: {
-                    primary: themeColors.primaryColor,
-                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                    primary: colors.focusedBorderColor,
+                    background: colors.cardBgColor,
+                    placeholder: colors.mutedTextColor,
                   },
                 }}
               />
@@ -174,32 +162,31 @@ export default function ProfileSettings() {
 
             {/* Email - Read Only */}
             <View style={styles.formControl}>
-              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+              <Text style={[styles.label, { color: colors.textColor }]}>
                 Email
               </Text>
               <PaperTextInput
                 value={formData.email}
                 mode="outlined"
                 style={styles.input}
-                textColor={themeColors.textColor}
+                textColor={colors.inputTextColor}
                 disabled
                 theme={{
                   colors: {
-                    primary: themeColors.primaryColor,
-                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                    primary: colors.focusedBorderColor,
+                    background: colors.cardBgColor,
+                    placeholder: colors.mutedTextColor,
                   },
                 }}
               />
-              <Text
-                style={[styles.helperText, { color: themeColors.subTextColor }]}
-              >
+              <Text style={[styles.helperText, { color: colors.subTextColor }]}>
                 Email cannot be changed
               </Text>
             </View>
 
             {/* Date of Birth */}
             <View style={styles.formControl}>
-              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+              <Text style={[styles.label, { color: colors.textColor }]}>
                 Date of Birth
               </Text>
               <TouchableOpacity onPress={() => setShowDatePicker(true)}>
@@ -207,19 +194,20 @@ export default function ProfileSettings() {
                   value={formData.date_of_birth}
                   mode="outlined"
                   style={styles.input}
-                  textColor={themeColors.textColor}
+                  textColor={colors.inputTextColor}
                   editable={false}
                   right={
                     <PaperTextInput.Icon
                       icon="calendar"
-                      color={themeColors.primaryColor}
+                      color={colors.iconColor}
                       onPress={() => setShowDatePicker(true)}
                     />
                   }
                   theme={{
                     colors: {
-                      primary: themeColors.primaryColor,
-                      placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                      primary: colors.focusedBorderColor,
+                      background: colors.cardBgColor,
+                      placeholder: colors.mutedTextColor,
                     },
                   }}
                 />
@@ -240,7 +228,7 @@ export default function ProfileSettings() {
 
             {/* Gender */}
             <View style={styles.formControl}>
-              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+              <Text style={[styles.label, { color: colors.textColor }]}>
                 Gender
               </Text>
               <View style={styles.genderOptions}>
@@ -256,8 +244,8 @@ export default function ProfileSettings() {
                         {
                           backgroundColor:
                             formData.gender === gender
-                              ? themeColors.accentColor
-                              : themeColors.genderOptionBg,
+                              ? colors.accentColor
+                              : colors.toggleBgColor,
                           opacity: formData.gender === gender ? 1 : 0.7,
                         },
                       ]}
@@ -273,16 +261,16 @@ export default function ProfileSettings() {
                         size={24}
                         color={
                           formData.gender === gender
-                            ? "white"
-                            : themeColors.textColor
+                            ? colors.whiteColor
+                            : colors.iconColor
                         }
                       />
                       <Text
                         style={{
                           color:
                             formData.gender === gender
-                              ? "white"
-                              : themeColors.textColor,
+                              ? colors.whiteColor
+                              : colors.textColor,
                           marginTop: 4,
                           fontSize: 12,
                           fontWeight:
@@ -299,7 +287,7 @@ export default function ProfileSettings() {
 
             {/* Bio */}
             <View style={styles.formControl}>
-              <Text style={[styles.label, { color: themeColors.labelColor }]}>
+              <Text style={[styles.label, { color: colors.textColor }]}>
                 Bio
               </Text>
               <PaperTextInput
@@ -309,11 +297,12 @@ export default function ProfileSettings() {
                 }
                 mode="outlined"
                 style={[styles.input, styles.bioInput]}
-                textColor={themeColors.textColor}
+                textColor={colors.inputTextColor}
                 theme={{
                   colors: {
-                    primary: themeColors.primaryColor,
-                    placeholder: isDark ? "#9CA3AF" : "#6B7280",
+                    primary: colors.focusedBorderColor,
+                    background: colors.cardBgColor,
+                    placeholder: colors.mutedTextColor,
                   },
                 }}
                 multiline
@@ -321,9 +310,7 @@ export default function ProfileSettings() {
                 maxLength={250}
                 placeholder="Tell us about yourself..."
               />
-              <Text
-                style={[styles.charCount, { color: themeColors.labelColor }]}
-              >
+              <Text style={[styles.charCount, { color: colors.subTextColor }]}>
                 {formData.bio.length}/250 characters
               </Text>
             </View>
@@ -337,22 +324,25 @@ export default function ProfileSettings() {
               styles.saveButton,
               {
                 backgroundColor: loading
-                  ? themeColors.pressedAccentColor
-                  : themeColors.accentColor,
+                  ? colors.buttonPressedBgColor
+                  : colors.buttonBgColor,
               },
             ]}
           >
-            <Text style={styles.saveButtonText}>
+            <Text
+              style={[styles.saveButtonText, { color: colors.buttonTextColor }]}
+            >
               {loading ? "Saving..." : "Save Changes"}
             </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAwareScrollView>
       <Toast />
-    </View>
+    </SafeAreaView>
   );
 }
 
+// Styles remain the same as in your original code
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -438,7 +428,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   saveButtonText: {
-    color: "white",
     fontWeight: "bold",
     fontSize: 16,
   },

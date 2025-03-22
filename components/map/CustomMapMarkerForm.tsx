@@ -11,13 +11,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { CustomMarkerData } from "./CustomMapMarker";
-import { nanoid } from "nanoid";
+import { CustomMarker } from "../../types/group";
+import { useColors } from "@/contexts/ColorContext";
 
 interface CustomMapMarkerFormProps {
   visible: boolean;
   onClose: () => void;
-  onAddMarker: (marker: CustomMarkerData) => void;
+  onAddMarker: (marker: Omit<CustomMarker, "id" | "userId">) => void;
   locationCoordinates: { latitude: number; longitude: number };
   username: string;
   textColor: string;
@@ -37,6 +37,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
   borderColor,
   buttonColor,
 }) => {
+  const color = useColors();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,8 +54,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
     setError(null);
 
     try {
-      const newMarker: CustomMarkerData = {
-        id: nanoid(), // Generate a unique ID
+      const newMarker: Omit<CustomMarker, "id" | "userId"> = {
         latitude: locationCoordinates.latitude,
         longitude: locationCoordinates.longitude,
         title: title.trim(),
@@ -78,6 +78,7 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
   };
 
   const handleCancel = () => {
+    // Reset form
     setTitle("");
     setDescription("");
     setError(null);
@@ -143,9 +144,10 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
             </View>
 
             <View style={styles.locationInfo}>
-              <MaterialIcons name="location-on" size={20} color={textColor} />
+              <MaterialIcons name="place" size={20} color={textColor} />
               <Text style={[styles.locationText, { color: textColor }]}>
-                Lat: {locationCoordinates.latitude.toFixed(6)}, Lng:{" "}
+                Selected Location - Lat:{" "}
+                {locationCoordinates.latitude.toFixed(6)}, Lng:{" "}
                 {locationCoordinates.longitude.toFixed(6)}
               </Text>
             </View>
@@ -175,7 +177,14 @@ const CustomMapMarkerForm: React.FC<CustomMapMarkerFormProps> = ({
                 {loading ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Add Marker</Text>
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      { color: color.buttonTextColor },
+                    ]}
+                  >
+                    Add Marker
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>

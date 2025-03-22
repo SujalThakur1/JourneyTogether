@@ -12,7 +12,12 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useGroups } from "../../../contexts/GroupsContext";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useColors } from "../../../contexts/ColorContext";
-const JoinGroupSection = () => {
+
+interface JoinGroupSectionProps {
+  onClose?: () => void;
+}
+
+const JoinGroupSection: React.FC<JoinGroupSectionProps> = ({ onClose }) => {
   const {
     groupCode,
     setGroupCode,
@@ -92,7 +97,11 @@ const JoinGroupSection = () => {
       setIsLoading(true);
       await handleJoinGroup();
       showToast("Success", "Successfully joined the group!");
-      // No need to clear input as we'll navigate away
+
+      // Close the bottom sheet if onClose prop is provided
+      if (onClose) {
+        onClose();
+      }
     } catch (error: any) {
       setError(error.message || "Failed to join group");
       showToast("Error", error.message || "Failed to join group");
@@ -102,12 +111,7 @@ const JoinGroupSection = () => {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.bgColor },
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.bgColor }]}>
       <View style={styles.headerContainer}>
         <Text style={[styles.header, { color: textColor }]}>
           Join Existing Group

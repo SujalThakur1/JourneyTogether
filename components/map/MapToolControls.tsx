@@ -5,8 +5,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 interface MapToolControlsProps {
   onFitMarkers: () => void;
   onAddMarker: () => void;
+  isMarkerModeActive?: boolean;
   onToggleMembersList: () => void;
   onToggleFollowMode: () => void;
+  onGoToMyLocation: () => void;
   isFollowingActive: boolean;
   pendingRequestsCount: number;
   onShowPendingRequests: () => void;
@@ -19,12 +21,11 @@ interface MapToolControlsProps {
 const MapToolControls: React.FC<MapToolControlsProps> = ({
   onFitMarkers,
   onAddMarker,
+  isMarkerModeActive = false,
   onToggleMembersList,
   onToggleFollowMode,
+  onGoToMyLocation,
   isFollowingActive,
-  pendingRequestsCount,
-  onShowPendingRequests,
-  isLeader,
   textColor,
   borderColor,
   bgColor,
@@ -35,7 +36,14 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
         style={[styles.button, { borderColor }]}
         onPress={onFitMarkers}
       >
-        <MaterialIcons name="my-location" size={22} color={textColor} />
+        <MaterialIcons name="fullscreen" size={22} color={textColor} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { borderColor }]}
+        onPress={onGoToMyLocation}
+      >
+        <MaterialIcons name="near-me" size={22} color={textColor} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -46,10 +54,20 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.button, { borderColor }]}
+        style={[
+          styles.button,
+          isMarkerModeActive
+            ? styles.activeMarkerButton
+            : "",
+          { borderColor },
+        ]}
         onPress={onAddMarker}
       >
-        <MaterialIcons name="add-location" size={22} color={textColor} />
+        <MaterialIcons
+          name={isMarkerModeActive ? "place" : "add-location"}
+          size={22}
+          color={isMarkerModeActive ? "#fff" : textColor}
+        />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -62,40 +80,6 @@ const MapToolControls: React.FC<MapToolControlsProps> = ({
           color={textColor}
         />
       </TouchableOpacity>
-
-      {isLeader && pendingRequestsCount > 0 && (
-        <TouchableOpacity
-          style={[styles.button, { borderColor }]}
-          onPress={onShowPendingRequests}
-        >
-          <MaterialIcons name="notifications" size={22} color={textColor} />
-          <View style={styles.badge}>
-            <MaterialIcons
-              name="circle"
-              size={18}
-              color="#EF4444"
-              style={styles.badgeIcon}
-            />
-            {pendingRequestsCount > 9 ? (
-              <MaterialIcons
-                name="more"
-                size={12}
-                color="white"
-                style={styles.badgeText}
-              />
-            ) : (
-              <View style={styles.badgeTextContainer}>
-                <MaterialIcons
-                  name={`filter-${pendingRequestsCount}` as any}
-                  size={12}
-                  color="white"
-                  style={styles.badgeText}
-                />
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      )}
     </View>
   );
 };
@@ -130,6 +114,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
+  },
+  activeMarkerButton: {
+    backgroundColor: "#10B981", // Green color to indicate active mode
   },
   badge: {
     position: "absolute",

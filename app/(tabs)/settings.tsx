@@ -18,7 +18,7 @@ import { supabase } from "../../lib/supabase";
 import { useApp } from "../../contexts/AppContext";
 import { useColorModeContext } from "../../contexts/ColorModeContext";
 import { useColors } from "../../contexts/ColorContext";
-import Toast from "react-native-toast-message"; // Toast replacement
+import Toast from "react-native-toast-message";
 import { CACHE_KEYS } from "../../contexts/AppContext";
 import {
   getCurrentLocation,
@@ -51,7 +51,6 @@ export default function SettingsScreen() {
     }
   }, [userDetails, userUpdated, setUserUpdated]);
 
-  // Loading state
   if (userLoading) {
     return (
       <View
@@ -144,32 +143,17 @@ export default function SettingsScreen() {
     { mode: "system", icon: "phone-portrait-outline", label: "System" },
   ];
 
-  const toggleLocationTracking = async () => {
-    if (isTrackingLocation) {
-      stopTrackingLocation();
-    } else {
-      // Check location permission before starting tracking
-      await checkAndRequestLocationPermission(
-        // Success callback
-        async () => {
-          await startTrackingLocation();
-        }
-      );
-    }
-  };
-
-  // Update the setLocationServices function to handle location permission
+  // Updated handleLocationServicesToggle to handle tracking
   const handleLocationServicesToggle = async (value: boolean) => {
     if (value) {
-      // If turning on, check and request permission
       await checkAndRequestLocationPermission(
-        // Success callback
-        () => {
+        async () => {
+          await startTrackingLocation();
           setLocationServices(true);
         }
       );
     } else {
-      // If turning off, just update the state
+      stopTrackingLocation();
       setLocationServices(false);
     }
   };
@@ -392,62 +376,6 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Location Tracking Section */}
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: colors.cardBgColor, marginTop: 16 },
-            ]}
-          >
-            <View style={styles.locationTracking}>
-              <View style={styles.locationDetails}>
-                <MaterialIcons
-                  name="location-on"
-                  size={24}
-                  color={colors.accentColor}
-                />
-                <View>
-                  <Text
-                    style={[styles.locationTitle, { color: colors.textColor }]}
-                  >
-                    Location Tracking
-                  </Text>
-                  <Text style={{ color: colors.subTextColor, fontSize: 12 }}>
-                    {isTrackingLocation
-                      ? "Your location is being tracked"
-                      : "Enable to share your location"}
-                  </Text>
-                </View>
-              </View>
-              <RNSwitch
-                value={isTrackingLocation}
-                onValueChange={toggleLocationTracking}
-                trackColor={{
-                  false: colors.switchTrackColor,
-                  true: colors.accentColor,
-                }}
-                thumbColor={colors.whiteColor}
-              />
-            </View>
-            {userLocation && (
-              <View
-                style={[
-                  styles.locationInfo,
-                  { backgroundColor: colors.cardBgColor },
-                ]}
-              >
-                <Text style={{ color: colors.subTextColor, fontSize: 12 }}>
-                  Last location: {userLocation.latitude.toFixed(6)},{" "}
-                  {userLocation.longitude.toFixed(6)}
-                </Text>
-                <Text style={{ color: colors.subTextColor, fontSize: 12 }}>
-                  Updated:{" "}
-                  {new Date(userLocation.timestamp).toLocaleTimeString()}
-                </Text>
-              </View>
-            )}
-          </View>
-
           {/* Settings Sections */}
           {settingsSections.map((section, index) => (
             <View key={index}>
@@ -627,25 +555,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-  },
-  locationTracking: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-  },
-  locationDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  locationTitle: {
-    fontWeight: "bold",
-    marginLeft: 12,
-  },
-  locationInfo: {
-    padding: 8,
-    borderRadius: 8,
-    marginTop: 8,
   },
   settingsItem: {
     flexDirection: "row",

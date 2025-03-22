@@ -8,10 +8,12 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
-import { MemberWithLocation } from "../../types/group";
+import { MemberWithLocation, CustomMarker } from "../../types/group";
+import { useColors } from "../../contexts/ColorContext";
 
 interface JourneyControlsProps {
   groupId: number;
@@ -30,17 +32,17 @@ interface JourneyControlsProps {
   buttonColor: string;
   borderColor: string;
   bgColor: string;
+  waypoints?: CustomMarker[];
+  onClearWaypoints?: () => void;
 }
 
 const JourneyControls: React.FC<JourneyControlsProps> = ({
   groupId,
-  groupName,
   members,
   isLeader,
   isJourneyActive,
   isFollowJourney,
   followedMemberId,
-  destinationId,
   onJourneyStart,
   onJourneyEnd,
   onFollowMember,
@@ -49,7 +51,10 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   buttonColor,
   borderColor,
   bgColor,
+  waypoints,
+  onClearWaypoints,
 }) => {
+  const colors = useColors();
   const [showMemberActions, setShowMemberActions] = useState(false);
   const [selectedMember, setSelectedMember] =
     useState<MemberWithLocation | null>(null);
@@ -59,7 +64,22 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   const handleStartJourney = () => {
     if (isFollowJourney && !followedMemberId && members.length > 1) {
       // If it's a follow journey and no member is selected yet
-      setShowMembersList(true);
+      if (isLeader) {
+        // Leaders should just start the journey without selecting members
+        onJourneyStart();
+      } else {
+        // Non-leaders automatically follow the leader
+        const leader = members.find((m) => m.isLeader);
+        if (leader && leader.location) {
+          onFollowMember(leader.id);
+          onJourneyStart();
+        } else {
+          Alert.alert(
+            "Cannot Start Journey",
+            "The leader is not online or their location is not available."
+          );
+        }
+      }
     } else {
       onJourneyStart();
     }
@@ -73,61 +93,6 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
   const handleMemberAction = (member: MemberWithLocation) => {
     setSelectedMember(member);
     setShowMemberActions(true);
-  };
-
-  const removeMember = async () => {
-    if (!selectedMember || !isLeader) return;
-
-    try {
-      setLoading(true);
-
-      // Get current group data
-      const { data: groupData, error: groupError } = await supabase
-        .from("groups")
-        .select("group_members")
-        .eq("group_id", groupId)
-        .single();
-
-      if (groupError) throw groupError;
-
-      // Remove member from group_members array
-      const updatedMembers = groupData.group_members.filter(
-        (id: string) => id !== selectedMember.id
-      );
-
-      // Update the group
-      const { error: updateError } = await supabase
-        .from("groups")
-        .update({ group_members: updatedMembers })
-        .eq("group_id", groupId);
-
-      if (updateError) throw updateError;
-
-      Alert.alert(
-        "Success",
-        `${selectedMember.username} has been removed from the group`
-      );
-      onUpdateMembers();
-      setShowMemberActions(false);
-    } catch (error) {
-      console.error("Error removing member:", error);
-      Alert.alert("Error", "Failed to remove member from group");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmRemoveMember = () => {
-    if (!selectedMember) return;
-
-    Alert.alert(
-      "Remove Member",
-      `Are you sure you want to remove ${selectedMember.username} from this group?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: removeMember },
-      ]
-    );
   };
 
   const finishTrip = () => {
@@ -154,26 +119,79 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: buttonColor }]}
+            style={[styles.button, { backgroundColor: colors.bgColor }]}
             onPress={handleStartJourney}
           >
-            <MaterialIcons name="play-circle-fill" size={24} color="white" />
-            <Text style={styles.buttonText}>
-              {isFollowJourney ? "Follow Member" : "Start Journey"}
+            <MaterialIcons
+              name="play-circle-fill"
+              size={24}
+              color={colors.textColor}
+            />
+            <Text style={[styles.buttonText, { color: colors.textColor }]}>
+              {isFollowJourney
+                ? isLeader
+                  ? "Start Journey"
+                  : "Follow Leader"
+                : "Start Journey"}
             </Text>
           </TouchableOpacity>
         )}
 
-        {isLeader && (
-          <TouchableOpacity
-            style={[styles.manageMembersButton, { borderColor }]}
-            onPress={() => setShowMembersList(true)}
+        {/* Waypoints display */}
+        {waypoints && waypoints.length > 0 && (
+          <View
+            style={[
+              styles.waypointsPanel,
+              { backgroundColor: colors.cardBgColor, borderColor: borderColor },
+            ]}
           >
-            <MaterialIcons name="people" size={20} color={textColor} />
-            <Text style={[styles.manageMembersText, { color: textColor }]}>
-              Manage Members
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.waypointsHeader}>
+              <Text style={[styles.waypointsTitle, { color: textColor }]}>
+                Waypoints ({waypoints.length})
+              </Text>
+              {onClearWaypoints && (
+                <TouchableOpacity
+                  onPress={onClearWaypoints}
+                  style={styles.clearWaypointsButton}
+                >
+                  <MaterialIcons name="clear-all" size={18} color={textColor} />
+                  <Text
+                    style={[{ color: textColor, fontSize: 12, marginLeft: 4 }]}
+                  >
+                    Clear All
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.waypointsList}
+            >
+              {waypoints.map((waypoint, index) => (
+                <View
+                  key={waypoint.id}
+                  style={[styles.waypointItem, { borderColor: borderColor }]}
+                >
+                  <MaterialIcons name="flag" size={16} color={textColor} />
+                  <Text
+                    style={[
+                      {
+                        color: textColor,
+                        fontSize: 12,
+                        marginLeft: 4,
+                        maxWidth: 100,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {index + 1}. {waypoint.title}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
         )}
       </View>
 
@@ -195,7 +213,7 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
               style={[styles.modalHeader, { borderBottomColor: borderColor }]}
             >
               <Text style={[styles.modalTitle, { color: textColor }]}>
-                {isLeader ? "Manage Members" : "Select Member to Follow"}
+                {isLeader ? "Manage Members" : "Select Leader to Follow"}
               </Text>
               <TouchableOpacity onPress={() => setShowMembersList(false)}>
                 <MaterialIcons name="close" size={24} color={textColor} />
@@ -266,72 +284,6 @@ const JourneyControls: React.FC<JourneyControlsProps> = ({
           </View>
         </View>
       </Modal>
-
-      {/* Member Actions Modal */}
-      <Modal
-        visible={showMemberActions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMemberActions(false)}
-      >
-        <View style={styles.actionModalOverlay}>
-          <View
-            style={[
-              styles.actionModalContent,
-              { backgroundColor: bgColor, borderColor },
-            ]}
-          >
-            <Text style={[styles.actionModalTitle, { color: textColor }]}>
-              {selectedMember?.username}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { borderBottomColor: borderColor }]}
-              onPress={() => {
-                if (selectedMember) {
-                  onFollowMember(selectedMember.id);
-                  setShowMemberActions(false);
-                  setShowMembersList(false);
-                }
-              }}
-            >
-              <MaterialIcons
-                name="person-pin-circle"
-                size={24}
-                color={textColor}
-              />
-              <Text style={[styles.actionButtonText, { color: textColor }]}>
-                Follow this member
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { borderBottomColor: borderColor }]}
-              onPress={confirmRemoveMember}
-            >
-              <MaterialIcons name="person-remove" size={24} color="#EF4444" />
-              <Text style={[styles.actionButtonText, { color: "#EF4444" }]}>
-                Remove from group
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCancelButton]}
-              onPress={() => setShowMemberActions(false)}
-            >
-              <Text style={[styles.actionCancelText, { color: buttonColor }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={buttonColor} />
-        </View>
-      )}
     </>
   );
 };
@@ -354,9 +306,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 8,
+    margin: 16,
   },
   buttonText: {
-    color: "white",
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -478,6 +430,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 100,
+  },
+  waypointsPanel: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  waypointsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  waypointsTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  clearWaypointsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  waypointsList: {
+    flexDirection: "row",
+  },
+  waypointItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 16,
+    marginRight: 8,
+    borderWidth: 1,
   },
 });
 

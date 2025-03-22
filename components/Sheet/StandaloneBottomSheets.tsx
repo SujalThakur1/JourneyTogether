@@ -1,9 +1,14 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
   Modal,
   TouchableWithoutFeedback,
+  ScrollView,
+  Keyboard,
+  Platform,
+  Dimensions,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useColors } from "../../contexts/ColorContext";
 import CreateGroupSection from "@/components/groups/createGroup/CreateGroupSection";
@@ -25,95 +30,159 @@ const StandaloneBottomSheets: React.FC<StandaloneBottomSheetsProps> = ({
 }) => {
   const colors = useColors();
   const { resetGroupForms } = useGroups();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const { height: screenHeight } = Dimensions.get("window");
 
-  // Handle closing create sheet with form reset
+  // Track when keyboard will show/hide
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
+      (e) => {
+        setKeyboardVisible(true);
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+
+    const keyboardWillHideListener = Keyboard.addListener(
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
+      () => {
+        setKeyboardVisible(false);
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener.remove();
+      keyboardWillHideListener.remove();
+    };
+  }, []);
+
+  // Handle close events with keyboard dismissal
   const handleCloseCreateSheet = () => {
+    Keyboard.dismiss();
     resetGroupForms();
     onCloseCreateSheet();
   };
 
-  // Handle closing join sheet with form reset
   const handleCloseJoinSheet = () => {
+    Keyboard.dismiss();
     resetGroupForms();
     onCloseJoinSheet();
   };
 
+  // Create Group Sheet
+  const renderCreateSheet = () => (
+    <Modal
+      visible={showCreateSheet}
+      transparent
+      animationType="slide"
+      onRequestClose={handleCloseCreateSheet}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
+      >
+        <View
+          style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
+        >
+          {/* Background overlay touchable */}
+          <TouchableWithoutFeedback onPress={handleCloseCreateSheet}>
+            <View style={styles.backgroundTouchable} />
+          </TouchableWithoutFeedback>
+
+          {/* Content container */}
+          <View
+            style={[
+              styles.bottomSheet,
+              {
+                backgroundColor: colors.bgColor,
+                borderTopLeftRadius: 15,
+                borderTopRightRadius: 15,
+                // Reduce the height slightly for better proportions
+                height: keyboardVisible
+                  ? screenHeight * 0.6 // Smaller when keyboard is visible
+                  : screenHeight * 0.7, // Larger when keyboard is hidden
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: colors.bottomSheetHandleColor },
+              ]}
+            />
+            <ScrollView
+              style={styles.scrollContent}
+              contentContainerStyle={[
+                styles.scrollContentContainer,
+                { paddingBottom: keyboardVisible ? 180 : 40 },
+              ]}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <CreateGroupSection onClose={handleCloseCreateSheet} />
+            </ScrollView>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+
+  // Join Group Sheet
+  const renderJoinSheet = () => (
+    <Modal
+      visible={showJoinSheet}
+      transparent
+      animationType="slide"
+      onRequestClose={handleCloseJoinSheet}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
+      >
+        <View
+          style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
+        >
+          {/* Background overlay touchable */}
+          <TouchableWithoutFeedback onPress={handleCloseJoinSheet}>
+            <View style={styles.backgroundTouchable} />
+          </TouchableWithoutFeedback>
+
+          {/* Content container */}
+          <View
+            style={[
+              styles.bottomSheet,
+              {
+                backgroundColor: colors.bgColor,
+                borderTopLeftRadius: 15,
+                borderTopRightRadius: 15,
+                // Always use a fixed pixel height for Join sheet
+                height: keyboardVisible ? 340 : 350,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: colors.bottomSheetHandleColor },
+              ]}
+            />
+            <View style={styles.content}>
+              <JoinGroupSection onClose={handleCloseJoinSheet} />
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+
   return (
     <>
-      {/* Create Group Modal */}
-      <Modal
-        visible={showCreateSheet}
-        transparent
-        animationType="slide"
-        onRequestClose={handleCloseCreateSheet}
-      >
-        <TouchableWithoutFeedback onPress={handleCloseCreateSheet}>
-          <View
-            style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
-          >
-            <TouchableWithoutFeedback>
-              <View
-                style={[
-                  styles.bottomSheet,
-                  {
-                    backgroundColor: colors.bgColor,
-                    borderTopLeftRadius: 15,
-                    borderTopRightRadius: 15,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.handle,
-                    { backgroundColor: colors.bottomSheetHandleColor },
-                  ]}
-                />
-                <View style={styles.content}>
-                  <CreateGroupSection />
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* Join Group Modal */}
-      <Modal
-        visible={showJoinSheet}
-        transparent
-        animationType="slide"
-        onRequestClose={handleCloseJoinSheet}
-      >
-        <TouchableWithoutFeedback onPress={handleCloseJoinSheet}>
-          <View
-            style={[styles.overlay, { backgroundColor: colors.overlayBgColor }]}
-          >
-            <TouchableWithoutFeedback>
-              <View
-                style={[
-                  styles.bottomSheet,
-                  {
-                    backgroundColor: colors.bgColor,
-                    borderTopLeftRadius: 15,
-                    borderTopRightRadius: 15,
-                    height: "50%",
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.handle,
-                    { backgroundColor: colors.bottomSheetHandleColor },
-                  ]}
-                />
-                <View style={styles.content}>
-                  <JoinGroupSection />
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+      {renderCreateSheet()}
+      {renderJoinSheet()}
     </>
   );
 };
@@ -123,8 +192,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
   },
+  backgroundTouchable: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
   bottomSheet: {
-    height: "90%",
     width: "100%",
     alignItems: "center",
     paddingTop: 12,
@@ -139,6 +214,14 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     paddingHorizontal: 16,
+  },
+  scrollContent: {
+    flex: 1,
+    width: "100%",
+  },
+  scrollContentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
   },
 });
 

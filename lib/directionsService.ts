@@ -115,7 +115,7 @@ export const getDirections = async (
     }
 
     if (!data.routes || data.routes.length === 0) {
-      throw new Error("No routes found");
+      console.log("No routes found");
     }
 
     const route = data.routes[0];

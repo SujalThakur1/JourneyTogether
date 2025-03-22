@@ -94,7 +94,7 @@ export async function startLocationTracking(
   try {
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== "granted") {
-      console.log("Location permission not granted");
+      console.log("Location permission not granted")
       const granted = await requestLocationPermission();
       if (!granted) return null;
     }
@@ -116,7 +116,13 @@ export async function startLocationTracking(
         distanceInterval: 10,
       },
       async (location) => {
+        console.log(
+          "New location:",
+          location.coords.latitude,
+          location.coords.longitude
+        );
         const userLocation = {
+          
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           timestamp: location.timestamp,
