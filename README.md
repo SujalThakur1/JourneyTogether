@@ -107,7 +107,7 @@ See all members in your group with their distance from the destination. The lead
 1. Clone the repository
 
    ```bash
-   git clone [https://github.com/SujalThakur1/JourneyTogether.git]
+   git clone https://github.com/SujalThakur1/JourneyTogether.git
    cd JourneyTogether
    ```
 
